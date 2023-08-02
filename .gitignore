@@ -1,0 +1,11 @@
+node_modules
+
+# temporary file or to be completed
+src
+
+#configuration file
+*.json
+server.js
+
+#images
+*.png
