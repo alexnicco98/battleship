@@ -35,8 +35,8 @@ contract BattleshipStorage is IntBattleshipStruct {
     mapping(uint256 => mapping(address => ShipPosition[])) correctPositionsHit;
     mapping(uint256 => mapping(address => VerificationStatus)) private battleVerification;
     mapping(uint256 => mapping(address => string)) private revealedLeafs;
-    mapping(GameMode => LobbyModel) private lobbyMap;
-    mapping(GameMode => GameModeDetail) private gameModeMapping;
+    mapping(GamePhase => LobbyModel) private lobbyMap;
+    mapping(GamePhase => GamePhaseDetail) private gamePhaseMapping;
 
     modifier onlyOwner() {
         require(msg.sender == owner, "Only the owner can execute this transaction");
@@ -62,9 +62,9 @@ contract BattleshipStorage is IntBattleshipStruct {
         isTest = _isTest;
         gameLogic = IntBattleshipLogic(_gameLogic);
 
-        gameModeMapping[GameMode.Regular] = GameModeDetail(minStakingAmount, GameMode.Regular, minTimeRequiredForPlayerToRespond);
-        gameModeMapping[GameMode.Intermediate] = GameModeDetail(minStakingAmount, GameMode.Regular, minTimeRequiredForPlayerToRespond);
-        gameModeMapping[GameMode.Professional] = GameModeDetail(minStakingAmount, GameMode.Regular, minTimeRequiredForPlayerToRespond);
+        gamePhaseMapping[GamePhase.Placement] = GamePhaseDetail(minStakingAmount, GamePhase.Placement, minTimeRequiredForPlayerToRespond);
+        gamePhaseMapping[GamePhase.Shooting] = GamePhaseDetail(minStakingAmount, GamePhase.Placement, minTimeRequiredForPlayerToRespond);
+        gamePhaseMapping[GamePhase.Gameover] = GamePhaseDetail(minStakingAmount, GamePhase.Placement, minTimeRequiredForPlayerToRespond);
     }
 
     // Battle related functions
@@ -113,21 +113,21 @@ contract BattleshipStorage is IntBattleshipStruct {
 
     // Game mode and lobby related functions
 
-    function setGameModeDetails(GameMode _gameMode, GameModeDetail memory _detail) external returns (bool) {
-        gameModeMapping[_gameMode] = _detail;
+    function setGamePhaseDetails(GamePhase _gamePhase, GamePhaseDetail memory _detail) external returns (bool) {
+        gamePhaseMapping[_gamePhase] = _detail;
         return true;
     }
 
-    function getGameModeDetails(GameMode _gameMode) external view returns (GameModeDetail memory) {
-        return gameModeMapping[_gameMode];
+    function getGamePhaseDetails(GamePhase _gamePhase) external view returns (GamePhaseDetail memory) {
+        return gamePhaseMapping[_gamePhase];
     }
 
-    function getLobby(GameMode _gameMode) external view returns (LobbyModel memory) {
-        return lobbyMap[_gameMode];
+    function getLobby(GamePhase _gamePhase) external view returns (LobbyModel memory) {
+        return lobbyMap[_gamePhase];
     }
 
-    function updateLobby(GameMode _gameMode, LobbyModel memory _lobbyModel) external returns (bool) {
-        lobbyMap[_gameMode] = _lobbyModel;
+    function updateLobby(GamePhase _gamePhase, LobbyModel memory _lobbyModel) external returns (bool) {
+        lobbyMap[_gamePhase] = _lobbyModel;
         return true;
     }
 

@@ -29,8 +29,8 @@ import "./libs/MerkleProof.sol";
         gameLogic = IntBattleshipLogic(_gameLogicAddress);
     }
     
-    event PlayerJoinedLobby(address _playerAddress, GameMode _gameMode);
-    event BattleStarted(uint _battleId, GameMode _gameMode, address[2] _players);
+    event PlayerJoinedLobby(address _playerAddress, GamePhase _gamePhase);
+    event BattleStarted(uint _battleId, GamePhase _gamePhase, address[2] _players);
     event ConfirmShotStatus(uint _battleId, address _confirmingPlayer, address _opponent, uint8 _position, ShipPosition _shipDetected);
     event AttackLaunched(uint _battleId, address _launchingPlayer, address _opponent, uint8 _position);
     event WinnerDetected(uint _battleId, address _winnerAddress, address _opponentAddress);
@@ -39,20 +39,20 @@ import "./libs/MerkleProof.sol";
 
     
     
-    function joinLobby(GameMode _gameMode, bytes32 _root, string memory _encryptedMerkleTree) public payable returns (uint){
+    function joinLobby(GamePhase _gamePhase, bytes32 _root, string memory _encryptedMerkleTree) public payable returns (uint){
         uint deposit = msg.value;
         address player = msg.sender;
         uint battleId = 0;
         
 
-        //get the Game mode
-        GameModeDetail memory gameModeDetail = dataStorage.getGameModeDetails(_gameMode);
+        //get the Game phase
+        GamePhaseDetail memory gamePhaseDetail = dataStorage.getGamePhaseDetails(_gamePhase);
         
         //Require that the amount of money sent in greater or equal to the required amount for this mode.
-        require(deposit == gameModeDetail.stake, "The amount of money deposited must be equal to the staking amount for this game mode");
+        require(deposit == gamePhaseDetail.stake, "The amount of money deposited must be equal to the staking amount for this game mode");
         
         //Get the Lobby
-        LobbyModel memory lobby = dataStorage.getLobbyByGameMode(_gameMode);
+        LobbyModel memory lobby = dataStorage.getLobbyByGamePhase(_gamePhase);
         
         //require that the sender is not already in the lobby
         require(lobby.occupant != player, "The occupant can not join in as the player");
@@ -64,14 +64,14 @@ import "./libs/MerkleProof.sol";
             lobby.isOccupied = true;
             lobby.positionRoot = _root;
             lobby.encryptedMerkleTree = _encryptedMerkleTree;
-            emit PlayerJoinedLobby(player, _gameMode);
+            emit PlayerJoinedLobby(player, _gamePhase);
 
         }else
         {
             //Start a new match
-            uint totalStake = gameModeDetail.stake * 2;
+            uint totalStake = gamePhaseDetail.stake * 2;
             battleId = dataStorage.createNewGameId();
-            BattleModel memory battle  = BattleModel(totalStake, lobby.occupant, player, block.timestamp, player, false, address(0), _gameMode, gameModeDetail.maxTimeForPlayerToPlay, false, 0, block.timestamp, block.timestamp, false, false);
+            BattleModel memory battle  = BattleModel(totalStake, lobby.occupant, player, block.timestamp, player, false, address(0), _gamePhase, gamePhaseDetail.maxTimeForPlayerToPlay, false, 0, block.timestamp, block.timestamp, false, false);
             
             //Set the encrypted merkle tree for both players
             dataStorage.setEncryptedMerkleTreeByBattleIdAndPlayer(battleId, battle.host, lobby.encryptedMerkleTree);
@@ -93,12 +93,12 @@ import "./libs/MerkleProof.sol";
             
      
             
-            emit BattleStarted(battleId, _gameMode, [battle.host, battle.client]);
+            emit BattleStarted(battleId, _gamePhase, [battle.host, battle.client]);
 
         }
         
         //Update the lobby
-        dataStorage.updateLobbyByGameMode(_gameMode, lobby);
+        dataStorage.updateLobbyByGamePhase(_gamePhase, lobby);
         return battleId;
     }
     
@@ -109,7 +109,7 @@ import "./libs/MerkleProof.sol";
 
     function attack(uint _battleId, string memory _previousPositionLeaf, bytes memory _previousPositionProof, uint8 _attackingPosition) public returns (bool){
         BattleModel memory battle = dataStorage.getBattle(_battleId);
-        GameModeDetail memory gameModeDetail = dataStorage.getGameModeDetails(battle.gameMode);
+        GamePhaseDetail memory gamePhaseDetail = dataStorage.getGamePhaseDetails(battle.gamePhase);
         address[] memory addresses = new address[](3);
         addresses[0] = gameLogic.msgSender(); //Player Address
         addresses[1] = battle.host == msg.sender ? battle.client : battle.host; //Oppponent Address
@@ -126,7 +126,7 @@ import "./libs/MerkleProof.sol";
         uint lastPlayTime = dataStorage.getLastPlayTimeByBattleId(_battleId);
         
         require(!battle.isCompleted, "A winner has been detected. Proceed to verify inputs");
-        require((block.timestamp - lastPlayTime) < gameModeDetail.maxTimeForPlayerToPlay, "Time to play is expired.");
+        require((block.timestamp - lastPlayTime) < gamePhaseDetail.maxTimeForPlayerToPlay, "Time to play is expired.");
         require(addresses[2] == addresses[0], "Wait till next turn");
         require(proofValidity, "The proof and position combination indactes an invalid move");
         
@@ -169,7 +169,7 @@ import "./libs/MerkleProof.sol";
     //Checks if there is a winner in the game.
     function checkForWinner(uint _battleId, address _playerAddress, address _opponentAddress, ShipPosition memory _shipPosition) private returns (bool){
         //Add to the last position hit
-        if(_shipPosition.ship != ShipType.None) dataStorage.setCorrectPositionsHitByBattleIdAndPlayer(_battleId, _playerAddress, _shipPosition);
+        if(_shipPosition.state != ShipState.None) dataStorage.setCorrectPositionsHitByBattleIdAndPlayer(_battleId, _playerAddress, _shipPosition);
         
         //Get The total positions hit
         ShipPosition[] memory correctPositionsHit = dataStorage.getCorrectPositionsHitByBattleIdAndPlayer(_battleId, _playerAddress);
@@ -192,7 +192,7 @@ import "./libs/MerkleProof.sol";
     {
         BattleModel memory battle = dataStorage.getBattle(_battleId);
         address payable playerAddress = payable(gameLogic.msgSender());
-        GameModeDetail memory gameModeDetail = dataStorage.getGameModeDetails(battle.gameMode);
+        GamePhaseDetail memory gamePhaseDetail = dataStorage.getGamePhaseDetails(battle.gamePhase);
         address payable transactionOfficer = payable(address(dataStorage.getTransactionOfficer()));
 
         require(battle.isCompleted, "Battle is not yet completed");
@@ -202,7 +202,7 @@ import "./libs/MerkleProof.sol";
         
         
          //Get the total reward.
-        uint totalReward = gameModeDetail.stake *  2;
+        uint totalReward = gamePhaseDetail.stake *  2;
         uint transactionCost = 0;
         uint commission = 0;
         uint actualReward = totalReward - transactionCost - commission;

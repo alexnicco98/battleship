@@ -15,10 +15,10 @@ interface IntBattleshipStorage is IntBattleshipStruct {
     function getContractOwner() external view returns (address);
     function setBattleshipContractAddress(address _address) external returns (bool);
     function setGameLogicAddress(address _gameLogicAddress) external returns (bool);
-    function setGameModeDetails(GameMode _gameMode, GameModeDetail memory _detail) external returns (bool);
-    function getLobbyByGameMode(GameMode _gameMode) external view returns (LobbyModel memory);
-    function getGameModeDetails(GameMode _gameMode) external view returns (GameModeDetail memory);
-    function updateLobbyByGameMode(GameMode _gameMode, LobbyModel memory _lobby) external returns (bool);
+    function setGamePhaseDetails(GamePhase _gamePhase, GamePhaseDetail memory _detail) external returns (bool);
+    function getLobbyByGamePhase(GamePhase _gamePhase) external view returns (LobbyModel memory);
+    function getGamePhaseDetails(GamePhase _gamePhase) external view returns (GamePhaseDetail memory);
+    function updateLobbyByGamePhase(GamePhase _gamePhase, LobbyModel memory _lobby) external returns (bool);
     
     // Player
     function getPlayerByAddress(address _address) external view returns (PlayerModel memory);

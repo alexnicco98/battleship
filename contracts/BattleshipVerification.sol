@@ -2,11 +2,9 @@
 pragma solidity ^0.8.19;
 pragma experimental ABIEncoderV2;
 
-//import "./libs/ReentrancyGuard.sol";
 import "./interfaces/IntBattleshipStorage.sol";
 import "./interfaces/IntBattleshipStruct.sol";
 import "./interfaces/IntBattleshipLogic.sol";
-//import "./libs/biconomy/BasicMetaTransaction.sol";
 import "./libs/MerkleProof.sol";
 
 /**

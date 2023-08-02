@@ -4,21 +4,32 @@ pragma experimental ABIEncoderV2;
 
 interface IntBattleshipStruct {
 
+    enum GamePhase {None, Placement, Shooting, Gameover} // phase of the game
+    enum ShipState {None, Intact, Damaged, Sunk } // condition of the ship
+    enum AxisType {None, X, Y} // coordinate by using Axis X and Y
     enum PlayerType {None, Host, Client}
-    enum ShipType {None, Destroyer, Submarine, Cruiser, Battleship, Carrier}
-    enum AxisType {None, X, Y}
-    enum GameMode {None, Regular, Intermediate, Professional}
     enum VerificationStatus {None, Unverified, Ok, Cheated}
+
+    //  position of a ship, including the ship lenght and axis.
+    /*  Implementation choice: based on the width of the Gameboard,
+        there will be n-1 ships in the game for both players.
+        The lenghts of this ships will be from 1 to n-1. 
+        All with width of 1*/
+    struct ShipPosition {
+        uint8 shipLenght;
+        AxisType axis;
+        ShipState state;
+    }
 
     struct BattleModel {
         uint256 stake; // Determines how much ethers was staked for this battle
-        address host; // Holds the address of the host captain
-        address client; // Holds the address of the client captain
+        address host; // address of the host player
+        address client; // address of the client captain
         uint256 startTime; // Battle start time
         address turn; // Address indicating whose turn it is to play next
         bool isCompleted; // Indicates whether or not the battle has been completed
         address winner; // Holds the address of the winning player;
-        GameMode gameMode; // The game mode
+        GamePhase gamePhase; // The game phase
         uint256 maxTimeForPlayerDelay; // If a captain does not play after this time elapses,
                                        // then the contract will do a random play for the captain and
                                        // then permit the next player to play. This will be done when the
@@ -45,9 +56,9 @@ interface IntBattleshipStruct {
         uint256 updatedAt; // Date last updated
     }
 
-    struct GameModeDetail {
+    struct GamePhaseDetail {
         uint256 stake;
-        GameMode gameType;
+        GamePhase gameTime;
         uint256 maxTimeForPlayerToPlay;
     }
 
@@ -73,9 +84,6 @@ interface IntBattleshipStruct {
         uint256 tiles;
     }
 
-    struct ShipPosition {
-        ShipType ship;
-        AxisType axis;
-    }
     
 }
+

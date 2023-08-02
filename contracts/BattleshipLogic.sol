@@ -2,125 +2,90 @@
 pragma solidity ^0.8.19;
 pragma experimental ABIEncoderV2;
 
-//import "./libs/ReentrancyGuard.sol";
-import "./interfaces/IntBattleshipStruct.sol";
-//import "./interfaces/IntBattleshipStruct.sol";
-//import "./interfaces/IntBattleshipStruct.sol";
+import "./interfaces/IntBattleshipStorage.sol";
 import "./libs/MerkleProof.sol";
 
 contract BattleshipLogic is IntBattleshipStruct {
 
-    mapping(ShipType => uint8) private shipSizes;
-    mapping(ShipType => uint8[]) private shipIndexes;
-    mapping(uint8 => ShipType) private shipFromIndex;
-    mapping(string => ShipPosition) private shipPositionMapping;
+    /**     TODO: check the code for possible mistake,
+            and try if ShipPosition is compatible with other contracts**/
+    uint8[] private shipSizes; // Array of ship lengths
+    mapping(uint8 => uint8[]) private shipIndexes; // Mapping of shipLength to array of corresponding indexes
+    mapping(uint8 => uint8) private shipFromIndex; // Mapping of shipLength index to shipLength value
+    mapping(uint8 => ShipPosition) private shipPositionMapping; // Mapping of shipLength to shipPosition
     uint8 private sumOfShipSizes;
-    uint8 private gridDimensionX;
-    uint8 private gridDimensionY;
+    uint8 private gridDimensionN;
     uint8 private gridSquare;
 
     constructor() {
-        gridDimensionX = 10;
-        gridDimensionY = 10;
-        sumOfShipSizes = 17;
-
+        gridDimensionN = 10;
         initializeShipSizes();
         initializeShipIndexes();
         initializeShipFromIndex();
-
         initializeShipPositionMapping();
-
-        gridSquare = gridDimensionX * gridDimensionY;
+        gridSquare = gridDimensionN * gridDimensionN;
     }
 
     function initializeShipSizes() private {
-        shipSizes[ShipType.Destroyer] = 2;
-        shipSizes[ShipType.Submarine] = 3;
-        shipSizes[ShipType.Cruiser] = 3;
-        shipSizes[ShipType.Battleship] = 4;
-        shipSizes[ShipType.Carrier] = 5;
+        shipSizes = new uint8[](gridDimensionN - 1);
+        for (uint8 i = 0; i < gridDimensionN - 1; i++) {
+            shipSizes[i] = i + 1;
+        }
+        sumOfShipSizes = gridDimensionN - 1;
     }
-
-    
 
     function initializeShipIndexes() private {
         for (uint8 i = 0; i < sumOfShipSizes; i++) {
-            ShipType shipType;
-            if (i == 0 || i == 1) {
-                shipType = ShipType.Destroyer;
-            } else if (i > 1 && i < 5) {
-                shipType = ShipType.Submarine;
-            } else if (i > 4 && i < 8) {
-                shipType = ShipType.Cruiser;
-            } else if (i > 7 && i < 12) {
-                shipType = ShipType.Battleship;
-            } else {
-                shipType = ShipType.Carrier;
-            }
-            shipIndexes[shipType].push(i);
+            shipIndexes[shipSizes[i]].push(i);
         }
     }
 
     function initializeShipFromIndex() private {
         for (uint8 i = 0; i < sumOfShipSizes; i++) {
-            shipFromIndex[i] = getShipTypeFromIndex(i);
+            shipFromIndex[i] = shipSizes[i];
         }
     }
 
     function initializeShipPositionMapping() private {
-        shipPositionMapping["11"] = ShipPosition(ShipType.Destroyer, AxisType.X);
-        shipPositionMapping["12"] = ShipPosition(ShipType.Destroyer, AxisType.Y);
-        shipPositionMapping["21"] = ShipPosition(ShipType.Submarine, AxisType.X);
-        shipPositionMapping["22"] = ShipPosition(ShipType.Submarine, AxisType.Y);
-        shipPositionMapping["31"] = ShipPosition(ShipType.Cruiser, AxisType.X);
-        shipPositionMapping["32"] = ShipPosition(ShipType.Cruiser, AxisType.Y);
-        shipPositionMapping["41"] = ShipPosition(ShipType.Battleship, AxisType.X);
-        shipPositionMapping["42"] = ShipPosition(ShipType.Battleship, AxisType.Y);
-        shipPositionMapping["51"] = ShipPosition(ShipType.Carrier, AxisType.X);
-        shipPositionMapping["52"] = ShipPosition(ShipType.Carrier, AxisType.Y);
+        for (uint8 i = 0; i < sumOfShipSizes; i++) {
+            shipPositionMapping[shipSizes[i]] = ShipPosition(shipSizes[i], AxisType.X, ShipState.None);
+        }
     }
 
-     function getPositionsOccupiedByShips( ShipType[5] memory _ship, uint8[5] memory _startingPositions, AxisType[5] memory _axis) external view returns (uint8[] memory){
-         uint8[] memory combinedShipPositions = new uint8[](sumOfShipSizes);
-         uint8[100] memory locationStatus;
-         uint8 combinedShipPositionIndex = 0;
-         for(uint8 i = 0; i < _startingPositions.length; i++)
-         {
-            uint8 sizeOfShip = shipSizes[_ship[i]];
+    function getPositionsOccupiedByShips(uint8[] memory _ship, uint8[5] memory _startingPositions, AxisType[5] memory _axis) external view returns (uint8[] memory) {
+        uint8[] memory combinedShipPositions = new uint8[](sumOfShipSizes);
+        uint8[100] memory locationStatus;
+        uint8 combinedShipPositionIndex = 0;
+
+        for (uint8 i = 0; i < _startingPositions.length; i++) {
+            uint8 shipLength = _ship[i];
             uint8 startingPosition = _startingPositions[i];
             AxisType axis = _axis[i];
-            
 
-            uint8 incrementer = axis == AxisType.X ? 1 : gridDimensionX;
-            uint8 maxTile = startingPosition + (incrementer * (sizeOfShip-1));
-            
-            
-            require (maxTile <= gridSquare && startingPosition >= 1, "Ship can not be placed outside the grid");
-            
-            if(axis == AxisType.X)
-            {
-                uint upperFactor = maxTile - 1;
+            uint8 incrementer = axis == AxisType.X ? 1 : gridDimensionN;
+            uint8 maxTile = startingPosition + (incrementer * (shipLength - 1));
+
+            require(maxTile <= gridSquare && startingPosition >= 1, "Ship can not be placed outside the grid");
+
+            if (axis == AxisType.X) {
                 uint lowerFactor = startingPosition - 1;
-                uint lowerLimitFactor = (lowerFactor - (lowerFactor % gridDimensionX)) / gridDimensionX;
-                uint upperLimitFactor = (upperFactor - (upperFactor % gridDimensionX)) / gridDimensionX;
-                require (lowerLimitFactor == upperLimitFactor, "Invalid Ship placement");
+                uint upperFactor = maxTile - 1;
+                uint lowerLimitFactor = (lowerFactor - (lowerFactor % gridDimensionN)) / gridDimensionN;
+                uint upperLimitFactor = (upperFactor - (upperFactor % gridDimensionN)) / gridDimensionN;
+                require(lowerLimitFactor == upperLimitFactor, "Invalid Ship placement");
             }
 
-            
-            //Fill in the positions
-            for(uint8 j = 0; j < sizeOfShip; j++)
-            {
+            // Fill in the positions
+            for (uint8 j = 0; j < shipLength; j++) {
                 uint8 position = startingPosition + (j * incrementer);
                 require(locationStatus[position] == 0, "Ships can not overlap");
                 locationStatus[position] = 1;
                 combinedShipPositions[combinedShipPositionIndex] = position;
                 combinedShipPositionIndex++;
             }
-            
-         }
-         
-         return combinedShipPositions;
-     }
+        }
+        return combinedShipPositions;
+    }
 
      function msgSender() external view returns(address sender) {
         if(msg.sender == address(this)) {
@@ -135,18 +100,61 @@ contract BattleshipLogic is IntBattleshipStruct {
         }
     }
 
-     function getShipTypeFromIndex(uint8 _index) public view returns (ShipType){
-         if(_index <  0 || _index > 16) return ShipType.None;
-         return shipFromIndex[_index];
+     function getShipTypeFromIndex(uint8 _index) public view returns (uint8){
+        if (_index >= 0 && _index < sumOfShipSizes) {
+            // Ship length is from 1 to n-1 (index+1) for gridDimensionN = 10
+            return _index + 1;
+        } else {
+            return 0; // 0 represents None
+        }
      }
      
      
-     function getShipInxesFromShipType(ShipType _shipType) external view returns (uint8[] memory){
-         return shipIndexes[_shipType];
-     }
+    function getShipInxesFromShipLenght(uint8 _shipLength) external view returns (uint8[] memory) {
+        return shipIndexes[_shipLength];
+    }
+
+    function getSlice(uint256 begin, uint256 end, string memory text) public pure returns (string memory) {
+        bytes memory a = new bytes(end - begin + 1);
+        for (uint i = 0; i <= end - begin; i++) {
+            a[i] = bytes(text)[i + begin - 1];
+        }
+        return string(a);
+    }
+    
+    function getBytes32FromBytes(bytes memory value, uint index) public pure returns(bytes32)
+    {
+        bytes32 el;
+        uint position = 32 * (index + 1);
+        //Require That the length of the bytes covers the position to be read from
+        require(value.length >= position, "The value requested is not within the range of the bytes");
+       assembly {
+        el := mload(add(value, position))
+        }
+        
+        return el;
+    }
+
+     function stringToUint8(string memory str) public pure returns (uint8) {
+        bytes memory strBytes = bytes(str);
+        require(strBytes.length > 0, "Empty string");
+
+        uint8 result = 0;
+        for (uint256 i = 0; i < strBytes.length; i++) {
+            uint8 digit = uint8(strBytes[i]) - 48; // Subtract the ASCII value of '0' (48) to get the digit
+            require(digit <= 9, "Invalid character in the string"); // Check if the character is a valid digit
+            result = result * 10 + digit; // Build the number digit by digit
+        }
+
+        return result;
+    }
+
+    function getShipPosition(string memory positionKey) external view returns (ShipPosition memory) {
+        return shipPositionMapping[stringToUint8(positionKey)];
+    }
      
   
-     function getOrderedpositionAndAxis(string memory positions) external view returns(uint16[] memory, AxisType[5] memory){
+     /*function getOrderedpositionAndAxis(string memory positions) external view returns(uint16[] memory, AxisType[5] memory){
         AxisType[5] memory axis = [AxisType.None, AxisType.None, AxisType.None, AxisType.None, AxisType.None];
         uint16[] memory orderedPositions = new uint16[](17);
 
@@ -226,34 +234,6 @@ contract BattleshipLogic is IntBattleshipStruct {
         }
         return true;
     }
-    
-
-
-    function stringToBytes32(string memory source) external pure returns (bytes32 result) {
-    bytes memory tempEmptyStringTest = bytes(source);
-    if (tempEmptyStringTest.length == 0) {
-        return 0x0;
-    }
-
-    assembly {
-        result := mload(add(source, 32))
-    }
-    }
-    
-
-    
-    function getBytes32FromBytes(bytes memory value, uint index) public pure returns(bytes32)
-    {
-        bytes32 el;
-        uint position = 32 * (index + 1);
-        //Require That the length of the bytes covers the position to be read from
-        require(value.length >= position, "The value requested is not within the range of the bytes");
-       assembly {
-        el := mload(add(value, position))
-        }
-        
-        return el;
-    }
 
     function getSliceOfBytesArray(bytes memory _bytesArray, uint16 _indexStart, uint16 _indexStop) external pure returns(bytes memory)
     {
@@ -267,20 +247,8 @@ contract BattleshipLogic is IntBattleshipStruct {
 
         return value;
     }
-    
-    //Gets a slice from a string
-    function getSlice(uint256 begin, uint256 end, string memory text) public pure returns (string memory) {
-        bytes memory a = new bytes(end-begin+1);
-        for(uint i=0;i<=end-begin;i++){
-            a[i] = bytes(text)[i+begin-1];
-        }
-        return string(a);
-    }
 
-    function getShipPosition(string memory positionKey) external view returns (ShipPosition memory)
-    {
-        return shipPositionMapping[positionKey];
-    }
+    */
     
     
 
