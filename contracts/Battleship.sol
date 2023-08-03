@@ -97,8 +97,8 @@ import "./libs/MerkleProof.sol";
 
         }
         
-        //Update the lobby
-        dataStorage.updateLobbyByGamePhase(_gamePhase, lobby);
+        // Update the lobby
+        dataStorage.setLobbyByGamePhase(_gamePhase, lobby);
         return battleId;
     }
     
@@ -174,7 +174,7 @@ import "./libs/MerkleProof.sol";
         //Get The total positions hit
         ShipPosition[] memory correctPositionsHit = dataStorage.getCorrectPositionsHitByBattleIdAndPlayer(_battleId, _playerAddress);
         
-        if(correctPositionsHit.length == 17)
+        if(correctPositionsHit.length == gameLogic.getSumOfShipSize())
         {
             //A winner has been found. Call  the game to a halt, and let the verification process begin.
             BattleModel memory battle = dataStorage.getBattle(_battleId);

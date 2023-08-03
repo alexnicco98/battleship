@@ -6,7 +6,7 @@ interface IntBattleshipStruct {
 
     enum GamePhase {None, Placement, Shooting, Gameover} // phase of the game
     enum ShipState {None, Intact, Damaged, Sunk } // condition of the ship
-    enum AxisType {None, X, Y} // coordinate by using Axis X and Y
+    enum ShipDirection {None, Vertical, Horizontal} // ship direction
     enum PlayerType {None, Host, Client}
     enum VerificationStatus {None, Unverified, Ok, Cheated}
 
@@ -16,8 +16,10 @@ interface IntBattleshipStruct {
         The lenghts of this ships will be from 1 to n-1. 
         All with width of 1*/
     struct ShipPosition {
-        uint8 shipLenght;
-        AxisType axis;
+        uint8 shipLength;
+        uint8 axisX;
+        uint8 axisY;
+        ShipDirection direction;
         ShipState state;
     }
 

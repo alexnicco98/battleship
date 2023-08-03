@@ -7,6 +7,9 @@ import "./interfaces/IntBattleshipLogic.sol";
 
 contract BattleshipStorage is IntBattleshipStruct {
     uint8 constant private TOTAL_TILES_REQUIRED = 17;
+    // in the next development, should be a non-fixed variable that
+    // the host player chose at the moment of creation of the game
+    uint8 constant private gridDimensionN = 10;
     uint256 private gameId;
     uint256 private minTimeRequiredForPlayerToRespond;
     uint256 private maxNumberOfMissiles;
@@ -22,7 +25,8 @@ contract BattleshipStorage is IntBattleshipStruct {
     address private battleShipContractAddress;
     IntBattleshipLogic private gameLogic;
 
-    mapping(ShipType => uint8) private shipSizes;
+
+    mapping(uint8 => uint8) private shipSizes;
     mapping(uint256 => BattleModel) private battles;
     mapping(address => PlayerModel) private players;
     mapping(uint256 => mapping(address => mapping(uint256 => bytes32))) private revealedPositions;
@@ -53,12 +57,11 @@ contract BattleshipStorage is IntBattleshipStruct {
     constructor(bool _isTest, address _gameLogic) {
         gameId = 0;
         owner = payable(address(msg.sender));
-        shipSizes[ShipType.Destroyer] = 2;
-        shipSizes[ShipType.Submarine] = 3;
-        shipSizes[ShipType.Cruiser] = 3;
-        shipSizes[ShipType.Battleship] = 4;
-        shipSizes[ShipType.Carrier] = 5;
-        maxNumberOfMissiles = 5;
+        for (uint8 i = 0; i < gridDimensionN - 1; i++) {
+            shipSizes[i] = i + 1;
+        }
+        // TODO: change to be the number of cels inside the matrix
+        maxNumberOfMissiles = 10;
         isTest = _isTest;
         gameLogic = IntBattleshipLogic(_gameLogic);
 
@@ -73,7 +76,7 @@ contract BattleshipStorage is IntBattleshipStruct {
         return battles[_battleId];
     }
 
-    function updateBattle(uint256 _battleId, BattleModel memory _battle) external onlyAuthorized returns (bool) {
+    function updateBattleById(uint256 _battleId, BattleModel memory _battle) external onlyAuthorized returns (bool) {
         _battle.updatedAt = block.timestamp;
         if (_battle.createdAt == 0) {
             _battle.createdAt = block.timestamp;
@@ -82,19 +85,14 @@ contract BattleshipStorage is IntBattleshipStruct {
         return true;
     }
 
-    function getNewGameId() external returns (uint256) {
+    function createNewGameId() external returns (uint256) {
         gameId++;
         return gameId;
     }
 
-    function setBattleshipContractAddress(address _address) onlyOwner external returns (bool) {
-        battleShipContractAddress = _address;
-        return true;
-    }
-
     // Player related functions
 
-    function getPlayer(address _address) public view returns (PlayerModel memory) {
+    function getPlayerByAddress(address _address) public view returns (PlayerModel memory) {
         return players[_address];
     }
 
@@ -102,54 +100,59 @@ contract BattleshipStorage is IntBattleshipStruct {
         return owner;
     }
 
-    function updatePlayer(address _player, PlayerModel memory _playerModel) onlyAuthorized external returns (bool) {
+    function setBattleshipContractAddress(address _address) onlyOwner external returns (bool) {
+        battleShipContractAddress = _address;
+        return true;
+    }
+
+    /*function updatePlayerByAddress(address _player, PlayerModel memory _playerModel) onlyAuthorized external returns (bool) {
         _playerModel.updatedAt = block.timestamp;
         if (_playerModel.createdAt == 0) {
             _playerModel.createdAt = block.timestamp;
         }
         players[_player] = _playerModel;
         return true;
-    }
+    }*/
 
     // Game mode and lobby related functions
-
-    function setGamePhaseDetails(GamePhase _gamePhase, GamePhaseDetail memory _detail) external returns (bool) {
-        gamePhaseMapping[_gamePhase] = _detail;
-        return true;
-    }
 
     function getGamePhaseDetails(GamePhase _gamePhase) external view returns (GamePhaseDetail memory) {
         return gamePhaseMapping[_gamePhase];
     }
 
-    function getLobby(GamePhase _gamePhase) external view returns (LobbyModel memory) {
+    /*function setGamePhaseDetails(GamePhase _gamePhase, GamePhaseDetail memory _detail) external returns (bool) {
+        gamePhaseMapping[_gamePhase] = _detail;
+        return true;
+    }*/
+
+    function getLobbyByGamePhase(GamePhase _gamePhase) external view returns (LobbyModel memory) {
         return lobbyMap[_gamePhase];
     }
 
-    function updateLobby(GamePhase _gamePhase, LobbyModel memory _lobbyModel) external returns (bool) {
+    function setLobbyByGamePhase(GamePhase _gamePhase, LobbyModel memory _lobbyModel) external returns (bool) {
         lobbyMap[_gamePhase] = _lobbyModel;
         return true;
     }
 
     // Merkle Tree related functions
 
-    function getEncryptedMerkleTree(uint256 _battleId, address _player) external view returns (string memory) {
+    function getEncryptedMerkleTreeByBattleIdAndPlayer(uint256 _battleId, address _player) external view returns (string memory) {
         return encryptedMerkleTree[_battleId][_player];
     }
 
-    function getRevealedPositionValue(uint256 _battleId, address _revealingPlayer, uint256 _position) external view returns (bytes32) {
-        return revealedPositions[_battleId][_revealingPlayer][_position];
-    }
-
-    function setEncryptedMerkleTree(uint256 _battleId, address _player, string memory _encryptedMerkleTree) external returns (bool) {
+    function setEncryptedMerkleTreeByBattleIdAndPlayer(uint256 _battleId, address _player, string memory _encryptedMerkleTree) external returns (bool) {
         encryptedMerkleTree[_battleId][_player] = _encryptedMerkleTree;
         return true;
     }
 
-    function setRevealedPositionValue(uint256 _battleId, address _revealingPlayer, uint256 _position, bytes32 _value) external returns (bool) {
+    /*function getRevealedPositionValueByBattleIdAndPlayer(uint256 _battleId, address _revealingPlayer, uint256 _position) external view returns (bytes32) {
+        return revealedPositions[_battleId][_revealingPlayer][_position];
+    }
+
+    function setRevealedPositionByBattleIdAndPlayer(uint256 _battleId, address _revealingPlayer, uint256 _position, bytes32 _value) external returns (bool) {
         revealedPositions[_battleId][_revealingPlayer][_position] = _value;
         return true;
-    }
+    }*/
 
     function getMerkleTreeRootByBattleIdAndPlayer(uint256 _battleId, address _player) external view returns (bytes32) {
         return merkleTreeRoot[_battleId][_player];
@@ -168,6 +171,17 @@ contract BattleshipStorage is IntBattleshipStruct {
 
     function setLastFiredPositionIndexByBattleIdAndPlayer(uint256 _battleId, address _player, uint8 _index) external returns (bool) {
         lastFiredPositionIndex[_battleId][_player] = _index;
+        return true;
+    }
+
+    function getLastPlayTimeByBattleId (uint _battleId) external view returns (uint)
+    {
+        return lastPlayTime[_battleId];
+    }
+    
+    function setLastPlayTimeByBattleId(uint _battleId, uint _playTime) external returns (bool)
+    {
+        lastPlayTime[_battleId] = _playTime;
         return true;
     }
 
@@ -193,14 +207,14 @@ contract BattleshipStorage is IntBattleshipStruct {
 
     // Battle verification related functions
 
-    function getBattleVerification(uint256 _battleId, address _player) external view returns (VerificationStatus) {
+    /*function getBattleVerification(uint256 _battleId, address _player) external view returns (VerificationStatus) {
         return battleVerification[_battleId][_player];
     }
 
     function setBattleVerification(uint256 _battleId, address _player, VerificationStatus _verificationStatus) external returns (bool) {
         battleVerification[_battleId][_player] = _verificationStatus;
         return true;
-    }
+    }*/
 
     // Revealed leafs related functions
 
@@ -215,7 +229,23 @@ contract BattleshipStorage is IntBattleshipStruct {
 
     // Miscellaneous functions
 
-    function getPlayerAddresses() external view returns (address[] memory) {
+    function getTurnByBattleId(uint _battleId) external view returns(address){
+        return turn[_battleId];
+    }
+    
+    function setTurnByBattleId (uint _battleId, address _turn) external returns (bool){
+        turn[_battleId]  = _turn;
+        return true;
+    }
+
+    function getTransactionOfficer() external view returns (address payable) {
+        return transactionOfficer;
+    }
+
+    
+}
+
+/*function getPlayerAddresses() external view returns (address[] memory) {
         return playerAddresses;
     }
 
@@ -291,10 +321,6 @@ contract BattleshipStorage is IntBattleshipStruct {
         return true;
     }
 
-    function getTransactionOfficer() external view returns (address payable) {
-        return transactionOfficer;
-    }
-
     function setTransactionOfficer(address payable _transactionOfficer) external onlyOwner returns (bool) {
         transactionOfficer = _transactionOfficer;
         return true;
@@ -321,5 +347,4 @@ contract BattleshipStorage is IntBattleshipStruct {
     function setIsTest(bool _isTest) external onlyOwner returns (bool) {
         isTest = _isTest;
         return true;
-    }
-}
+    }*/

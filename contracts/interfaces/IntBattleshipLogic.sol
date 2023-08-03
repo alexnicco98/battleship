@@ -6,17 +6,17 @@ import "./IntBattleshipStruct.sol";
 
 interface IntBattleshipLogic is IntBattleshipStruct{
 
+    function getSumOfShipSize() external view returns (uint8);
+    function getGridDimensionN() external view returns (uint8);
+    function setGridDimensionN(uint8 newValue) external;
+
     function msgSender() external view returns(address sender);
 
-    function getPositionsOccupiedByShips(
-        uint8[5] memory shipsLenght,
-        uint8[5] memory startingPositions,
-        AxisType[5] memory axes
-    ) external view returns (uint8[] memory);
+    function getPositionsOccupiedByAllShips() external view returns (uint8[] memory);
 
     function getShipTypeFromIndex(uint8 index) external view returns (uint8);
 
-    function getShipInxesFromShipLenght(uint8 shipLenght) external view returns (uint8[] memory);
+    function getShipInxesFromShipLength(uint8 shipLenght) external view returns (uint8[] memory);
 
     function getSlice(uint256 begin, uint256 end, string memory text) external pure returns (string memory);
 

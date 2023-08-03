@@ -74,10 +74,13 @@ contract BattleshipVerification is IntBattleshipStruct, MerkleProof {
         uint8[] memory orderedPositions;
         AxisType[5] memory axis;
 
+        /** 
+            TODO: change the getOrderedPositionsAndAxis function
+            to work with the new implementation**/
         (orderedPositions, axis) = gameLogic.getOrderedPositionsAndAxis(leafs);
         uint8[5] memory startingPositions = [orderedPositions[0], orderedPositions[2], orderedPositions[5], orderedPositions[8], orderedPositions[12]];
 
-        uint8[] memory calculatedPositions = gameLogic.getPositionsOccupiedByShips(ships, startingPositions, axis);
+        uint8[] memory calculatedPositions = gameLogic.getPositionsOccupiedByAllShips(ships, startingPositions, axis);
         bool isPositionValid = gameLogic.checkEqualArray(calculatedPositions, orderedPositions);
         emit ShipPositionVerificationComplete(_battleId, player, isPositionValid);
 
