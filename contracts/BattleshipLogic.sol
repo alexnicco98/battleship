@@ -39,13 +39,13 @@ contract BattleshipLogic is IntBattleshipStruct {
     }
 
     function initializeShipIndexes() private {
-        for (uint8 i = 0; i < sumOfShipSizes; i++) {
+        for (uint8 i = 0; i < gridDimensionN - 1; i++) {
             shipIndexes[shipSizes[i]].push(i);
         }
     }
 
     function initializeShipFromIndex() private {
-        for (uint8 i = 0; i < sumOfShipSizes; i++) {
+        for (uint8 i = 0; i < gridDimensionN - 1; i++) {
             shipFromIndex[i] = shipSizes[i];
         }
     }
@@ -70,7 +70,7 @@ contract BattleshipLogic is IntBattleshipStruct {
         require(areShipsNonOverlapping(shipStartXPositions, shipStartYPositions, shipSizes, shipDirections), "Ships overlap");
 
         // Save the ship positions and lengths in the shipPositionMapping
-        for (uint8 i = 0; i < sumOfShipSizes; i++) {
+        for (uint8 i = 0; i < gridDimensionN - 1; i++) {
             uint8 shipLength = shipSizes[i];
             ShipPosition memory shipPosition = ShipPosition({
                 shipLength: shipSizes[i],
@@ -86,7 +86,7 @@ contract BattleshipLogic is IntBattleshipStruct {
 
     // generate a random ship direction
     function generateRandomDirection() private view returns (ShipDirection) {
-        uint8 randomValue = uint8(uint256(keccak256(abi.encodePacked(block.timestamp, block.difficulty))) % 2);
+        uint8 randomValue = uint8(uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao))) % 2);
         if (randomValue == 0) {
             return ShipDirection.Vertical;
         } else {
@@ -99,19 +99,19 @@ contract BattleshipLogic is IntBattleshipStruct {
         require(gridSize > 0, "Grid size must be greater than 0");
 
         // Generate random X and Y coordinates within the grid size
-        axisX = uint8(uint256(keccak256(abi.encodePacked(block.timestamp, block.difficulty, msg.sender, shipLength, direction))) % gridSize);
-        axisY = uint8(uint256(keccak256(abi.encodePacked(block.timestamp, block.difficulty, msg.sender, shipLength, direction, axisX))) % gridSize);
+        axisX = uint8(uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, msg.sender, shipLength, direction))) % gridSize);
+        axisY = uint8(uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, msg.sender, shipLength, direction, axisX))) % gridSize);
 
         // Adjust X and Y coordinates based on ship length and direction to ensure the entire ship fits within the grid
         if (direction == ShipDirection.Horizontal) {
             // Check if the ship goes out of bounds on the X-axis
             while (axisX + shipLength > gridSize) {
-                axisX = uint8(uint256(keccak256(abi.encodePacked(block.timestamp, block.difficulty, msg.sender, shipLength, direction, axisX))) % gridSize);
+                axisX = uint8(uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, msg.sender, shipLength, direction, axisX))) % gridSize);
             }
         } else if (direction == ShipDirection.Vertical) {
             // Check if the ship goes out of bounds on the Y-axis
             while (axisY + shipLength > gridSize) {
-                axisY = uint8(uint256(keccak256(abi.encodePacked(block.timestamp, block.difficulty, msg.sender, shipLength, direction, axisY))) % gridSize);
+                axisY = uint8(uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, msg.sender, shipLength, direction, axisY))) % gridSize);
             }
         }
 
@@ -176,14 +176,15 @@ contract BattleshipLogic is IntBattleshipStruct {
         gridDimensionN = newValue;
     }
 
-    function getPositionsOccupiedByAllShips() external view returns (uint8[] memory) {
-        uint8[] memory allShipPositions = new uint8[](gridDimensionN);
+    // check the logic behind this function
+    /*function getPositionsOccupiedByAllShips() external view returns (uint8[] memory) {
+        uint8[] memory allShipPositions = new uint8[](gridDimensionN - 1);
 
         uint8 currentIndex = 0;
         for (uint8 i = 0; i < shipSizes.length; i++) {
             ShipPosition memory shipPos = shipPositionMapping[shipSizes[i]];
-            uint8 axisX;
-            uint8 axisY;
+            uint8 axisX = shipPos.axisX;
+            uint8 axisY = shipPos.axisY;
             (axisX, axisY) = generateRandomAxis(shipPos.shipLength, shipPos.direction);
 
             if (shipPos.direction == ShipDirection.Horizontal) {
@@ -200,7 +201,7 @@ contract BattleshipLogic is IntBattleshipStruct {
         }
 
         return allShipPositions;
-    }
+    }*/
 
      function msgSender() external view returns(address sender) {
         if(msg.sender == address(this)) {
@@ -216,7 +217,7 @@ contract BattleshipLogic is IntBattleshipStruct {
     }
 
      function getShipTypeFromIndex(uint8 _index) public view returns (uint8){
-        if (_index >= 0 && _index < sumOfShipSizes) {
+        if (_index >= 0 && _index < gridDimensionN) {
             // Ship length is from 1 to n-1 (index+1) for gridDimensionN = 10
             return _index + 1;
         } else {
@@ -229,13 +230,13 @@ contract BattleshipLogic is IntBattleshipStruct {
         return shipIndexes[_shipLength];
     }
 
-    function getSlice(uint256 begin, uint256 end, string memory text) public pure returns (string memory) {
+    /*function getSlice(uint256 begin, uint256 end, string memory text) public pure returns (string memory) {
         bytes memory a = new bytes(end - begin + 1);
         for (uint i = 0; i <= end - begin; i++) {
             a[i] = bytes(text)[i + begin - 1];
         }
         return string(a);
-    }
+    }*/
     
     function getBytes32FromBytes(bytes memory value, uint index) public pure returns(bytes32)
     {
@@ -267,6 +268,36 @@ contract BattleshipLogic is IntBattleshipStruct {
     function getShipPosition(string memory positionKey) internal view returns (ShipPosition memory) {
         return shipPositionMapping[stringToUint8(positionKey)];
     }
+
+    /*function getOrderedPositionsAndAxis(string memory positions) external view returns (uint16[] memory, uint8[] memory, uint8[] memory) {
+        uint8[] memory shipCounts = new uint8[](gridDimensionN - 1);
+        uint16[] memory orderedPositions = new uint16[](gridDimensionN - 1);
+        uint8[] memory axisX = new uint8[](gridDimensionN - 1);
+        uint8[] memory axisY = new uint8[](gridDimensionN - 1);
+
+        for (uint8 i = 0; i < gridDimensionN - 1; i++) {
+            axisX[i] = 0;
+            axisY[i] = 0;
+        }
+
+        uint8 currentIndex = 0;
+        for (uint16 i = 0; i < 400; i += 4) {
+            string memory shipPositionKey = getSlice(i + 1, i + 2, positions);
+            ShipPosition memory shipPosition = getShipPosition(shipPositionKey);
+
+            if (shipPosition.shipLength >= 1 && shipPosition.shipLength <= sumOfShipSizes - 1) {
+                if (axisX[shipPosition.shipLength - 1] == 0) {
+                    axisX[shipPosition.shipLength - 1] = generateRandomAxis(shipPosition.shipLength, shipPosition.direction, true);
+                    axisY[shipPosition.shipLength - 1] = generateRandomAxis(shipPosition.shipLength, shipPosition.direction, false);
+                }
+                orderedPositions[shipCounts[shipPosition.shipLength - 1]] = (i / 4) + 1;
+                shipCounts[shipPosition.shipLength - 1]++;
+            }
+        }
+
+        return (orderedPositions, axisX, axisY);
+    }*/
+
      
 
     /*function getOrderedPositionsAndAxis(string memory positions) external view returns(uint16[] memory, AxisType[5] memory){

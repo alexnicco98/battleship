@@ -60,7 +60,8 @@ contract BattleshipVerification is IntBattleshipStruct, MerkleProof {
      * @param _battleId The ID of the battle to verify.
      * @return isPositionValid Whether the ship positions are valid.
      */
-    function verifyShipPositions(uint256 _battleId) public returns (bool) {
+    /*function verifyShipPositions(uint256 _battleId) public returns (bool) {
+        uint8 memory size = gameLogic.getGridDimensionN() - 1;
         BattleModel memory battle = dataStorage.getBattle(_battleId);
         address player = gameLogic.msgSender();
         string memory leafs = dataStorage.getRevealedLeafsByBattleIdAndPlayer(_battleId, player);
@@ -70,16 +71,16 @@ contract BattleshipVerification is IntBattleshipStruct, MerkleProof {
         require(battle.leafVerificationPassed, "Leaf verification must be passed first");
         require(!battle.shipPositionVerificationPassed, "Ship Positions Verification has already been passed");
 
-        ShipType[5] memory ships = [ShipType.Destroyer, ShipType.Submarine, ShipType.Cruiser, ShipType.Battleship, ShipType.Carrier];
-        uint8[] memory orderedPositions;
-        AxisType[5] memory axis;
+        uint8 [] memory ships = new uint8[](size);
+        uint8[] memory orderedPositions = new uint8[](size);
+        uint8[] memory axisX = new uint8[](size);
+        uint8[] memory axisY = new uint8[](size);
 
-        /** 
-            TODO: change the getOrderedPositionsAndAxis function
-            to work with the new implementation**/
-        (orderedPositions, axis) = gameLogic.getOrderedPositionsAndAxis(leafs);
+        
+        (orderedPositions, axisX, axisY) = gameLogic.getOrderedPositionsAndAxis(leafs);
         uint8[5] memory startingPositions = [orderedPositions[0], orderedPositions[2], orderedPositions[5], orderedPositions[8], orderedPositions[12]];
 
+        // TODO: change the getOrderedPositionsAndAxis function to work with the new implementation
         uint8[] memory calculatedPositions = gameLogic.getPositionsOccupiedByAllShips(ships, startingPositions, axis);
         bool isPositionValid = gameLogic.checkEqualArray(calculatedPositions, orderedPositions);
         emit ShipPositionVerificationComplete(_battleId, player, isPositionValid);
@@ -90,5 +91,5 @@ contract BattleshipVerification is IntBattleshipStruct, MerkleProof {
         }
 
         return isPositionValid;
-    }
+    }*/
 }

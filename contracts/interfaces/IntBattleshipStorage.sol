@@ -37,8 +37,8 @@ interface IntBattleshipStorage is IntBattleshipStruct {
     
     // Position attack related functions
 
-    function getLastFiredPositionIndexByBattleIdAndPlayer(uint256 _battleId, address _player) external view returns (uint8);
-    function setLastFiredPositionIndexByBattleIdAndPlayer(uint256 _battleId, address _player, uint8 _lastFiredPosition) external returns (bool);
+    function getLastFiredPositionIndexByBattleIdAndPlayer(uint256 _battleId, address _player) external view returns (uint8[2] memory);
+    function setLastFiredPositionIndexByBattleIdAndPlayer(uint256 _battleId, address _player, uint8 _attackingPositionX, uint8 _attackingPositionY) external returns (bool);
     
     function getTurnByBattleId(uint256 _battleId) external view returns (address);
     function setTurnByBattleId(uint256 _battleId, address _turn) external returns (bool);
@@ -47,7 +47,7 @@ interface IntBattleshipStorage is IntBattleshipStruct {
     function setLastPlayTimeByBattleId(uint256 _battleId, uint256 _playTime) external returns (bool);
     
     function getPositionsAttackedByBattleIdAndPlayer(uint256 _battleId, address _player) external view returns (uint8[] memory);
-    function setPositionsAttackedByBattleIdAndPlayer(uint256 _battleId, address _player, uint8 _position) external returns (bool);
+    function setPositionsAttackedByBattleIdAndPlayer(uint256 _battleId, address _player, uint8 attackingPositionX, uint8 attackingPositionY) external returns (bool);
     
     // Correct positions hit related functions
 

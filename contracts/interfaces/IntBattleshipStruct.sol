@@ -26,7 +26,7 @@ interface IntBattleshipStruct {
     struct BattleModel {
         uint256 stake; // Determines how much ethers was staked for this battle
         address host; // address of the host player
-        address client; // address of the client captain
+        address client; // address of the client connected
         uint256 startTime; // Battle start time
         address turn; // Address indicating whose turn it is to play next
         bool isCompleted; // Indicates whether or not the battle has been completed

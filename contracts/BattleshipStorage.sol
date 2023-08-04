@@ -33,7 +33,7 @@ contract BattleshipStorage is IntBattleshipStruct {
     mapping(uint256 => mapping(address => uint8[])) private positionsAttacked;
     mapping(uint256 => mapping(address => string)) private encryptedMerkleTree;
     mapping(uint256 => mapping(address => bytes32)) private merkleTreeRoot;
-    mapping(uint256 => mapping(address => uint8)) private lastFiredPositionIndex;
+    mapping(uint256 => mapping(address => uint8[2])) private lastFiredPositionIndex;
     mapping(uint256 => address) private turn;
     mapping(uint256 => uint256) private lastPlayTime;
     mapping(uint256 => mapping(address => ShipPosition[])) correctPositionsHit;
@@ -165,12 +165,12 @@ contract BattleshipStorage is IntBattleshipStruct {
 
     // Position attack related functions
 
-    function getLastFiredPositionIndexByBattleIdAndPlayer(uint256 _battleId, address _player) external view returns (uint8) {
+    function getLastFiredPositionIndexByBattleIdAndPlayer(uint256 _battleId, address _player) external view returns (uint8[2] memory) {
         return lastFiredPositionIndex[_battleId][_player];
     }
 
-    function setLastFiredPositionIndexByBattleIdAndPlayer(uint256 _battleId, address _player, uint8 _index) external returns (bool) {
-        lastFiredPositionIndex[_battleId][_player] = _index;
+    function setLastFiredPositionIndexByBattleIdAndPlayer(uint256 _battleId, address _player, uint8 _attackingPositionX, uint8 _attackingPositionY) external returns (bool) {
+        lastFiredPositionIndex[_battleId][_player] = [_attackingPositionX, _attackingPositionY];
         return true;
     }
 
@@ -179,18 +179,19 @@ contract BattleshipStorage is IntBattleshipStruct {
         return lastPlayTime[_battleId];
     }
     
-    function setLastPlayTimeByBattleId(uint _battleId, uint _playTime) external returns (bool)
+    /*function setLastPlayTimeByBattleId(uint _battleId, uint _playTime) external returns (bool)
     {
         lastPlayTime[_battleId] = _playTime;
         return true;
-    }
+    }*/
 
     function getPositionsAttackedByBattleIdAndPlayer(uint256 _battleId, address _player) external view returns (uint8[] memory) {
         return positionsAttacked[_battleId][_player];
     }
 
-    function setPositionsAttackedByBattleIdAndPlayer(uint256 _battleId, address _player, uint8[] memory _positions) external returns (bool) {
-        positionsAttacked[_battleId][_player] = _positions;
+    // check the correctness
+    function setPositionsAttackedByBattleIdAndPlayer(uint256 _battleId, address _player, uint8 attackingPositionX, uint8 attackingPositionY) external returns (bool) {
+        positionsAttacked[_battleId][_player] = [attackingPositionX, attackingPositionY];
         return true;
     }
 
