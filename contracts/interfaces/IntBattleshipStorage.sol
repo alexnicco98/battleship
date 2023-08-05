@@ -3,8 +3,9 @@ pragma solidity ^0.8.19;
 pragma experimental ABIEncoderV2;
 
 import "./IntBattleshipStruct.sol";
+import "./IntBattleshipLogic.sol";
 
-interface IntBattleshipStorage is IntBattleshipStruct {
+interface IntBattleshipStorage is IntBattleshipStruct, IntBattleshipLogic {
     
     // Battle related functions
     function getBattle(uint _battleId) external view returns (BattleModel memory);
@@ -51,8 +52,8 @@ interface IntBattleshipStorage is IntBattleshipStruct {
     
     // Correct positions hit related functions
 
-    function getCorrectPositionsHitByBattleIdAndPlayer(uint256 _battleId, address _player) external view returns (ShipPosition[] memory);
-    function setCorrectPositionsHitByBattleIdAndPlayer(uint256 _battleId, address _player, ShipPosition memory _shipPosition) external returns (bool);
+    function getCorrectPositionsHitByBattleIdAndPlayer(uint256 _battleId, address _player) external view returns (ShipPositionMapping[] memory);
+    function setCorrectPositionsHitByBattleIdAndPlayer(uint256 _battleId, address _player, ShipPositionMapping memory _shipPosition) external returns (bool);
     
     // Battle verification related functions
 

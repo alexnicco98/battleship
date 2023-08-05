@@ -71,12 +71,12 @@ contract("Battleship", accounts => {
     });
 
     it("Should launch an attack from the first player", () => {
-        let previousPositionLeaf = "00000";
-        let previousPositionProof = "0x00";
+        let previousPositionLeaf = 0;
+        let previousPositionProof = 0x00;
         let attackingPositionX = 1;
         let attackingPositionY = 1;
 
-        return battleship.attack(battleId, previousPositionLeaf, previousPositionProof, attackingPosition, { from: playerTwo })
+        return battleship.attack(battleId, previousPositionLeaf, previousPositionProof, 1, 1, { from: playerTwo })
         .then(result => {
             let confirmShotStatusEvent = result.logs[0];
             let attackLaunchedEvent = result.logs[1];

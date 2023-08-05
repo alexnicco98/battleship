@@ -22,6 +22,7 @@ interface IntBattleshipStruct {
         ShipDirection direction;
         ShipState state;
     }
+    
 
     struct BattleModel {
         uint256 stake; // Determines how much ethers was staked for this battle

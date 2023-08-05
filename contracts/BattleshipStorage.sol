@@ -5,11 +5,10 @@ pragma experimental ABIEncoderV2;
 import "./interfaces/IntBattleshipStruct.sol";
 import "./interfaces/IntBattleshipLogic.sol";
 
-contract BattleshipStorage is IntBattleshipStruct {
-    uint8 constant private TOTAL_TILES_REQUIRED = 17;
+abstract contract BattleshipStorage is IntBattleshipStruct, IntBattleshipLogic {
     // in the next development, should be a non-fixed variable that
     // the host player chose at the moment of creation of the game
-    uint8 constant private gridDimensionN = 10;
+    uint8 constant private gridDimensionN = 4;
     uint256 private gameId;
     uint256 private minTimeRequiredForPlayerToRespond;
     uint256 private maxNumberOfMissiles;
@@ -36,7 +35,7 @@ contract BattleshipStorage is IntBattleshipStruct {
     mapping(uint256 => mapping(address => uint8[2])) private lastFiredPositionIndex;
     mapping(uint256 => address) private turn;
     mapping(uint256 => uint256) private lastPlayTime;
-    mapping(uint256 => mapping(address => ShipPosition[])) correctPositionsHit;
+    mapping(uint256 => mapping(address => ShipPositionMapping[])) correctPositionsHit;
     mapping(uint256 => mapping(address => VerificationStatus)) private battleVerification;
     mapping(uint256 => mapping(address => string)) private revealedLeafs;
     mapping(GamePhase => LobbyModel) private lobbyMap;
@@ -61,7 +60,7 @@ contract BattleshipStorage is IntBattleshipStruct {
             shipSizes[i] = i + 1;
         }
         // TODO: change to be the number of cels inside the matrix
-        maxNumberOfMissiles = 10;
+        maxNumberOfMissiles = 16;
         isTest = _isTest;
         gameLogic = IntBattleshipLogic(_gameLogic);
 
@@ -197,11 +196,11 @@ contract BattleshipStorage is IntBattleshipStruct {
 
     // Correct positions hit related functions
 
-    function getCorrectPositionsHitByBattleIdAndPlayer(uint256 _battleId, address _player) external view returns (ShipPosition[] memory) {
+    function getCorrectPositionsHitByBattleIdAndPlayer(uint256 _battleId, address _player) external view returns (ShipPositionMapping[] memory) {
         return correctPositionsHit[_battleId][_player];
     }
 
-    function setCorrectPositionsHitByBattleIdAndPlayer(uint256 _battleId, address _player, ShipPosition[] memory _positions) external returns (bool) {
+    function setCorrectPositionsHitByBattleIdAndPlayer(uint256 _battleId, address _player, ShipPositionMapping[] memory _positions) external returns (bool) {
         correctPositionsHit[_battleId][_player] = _positions;
         return true;
     }

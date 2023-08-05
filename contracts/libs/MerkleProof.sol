@@ -8,10 +8,16 @@ pragma experimental ABIEncoderV2;
  */
 contract MerkleProof {
 
+    struct ProofVariables{
+        bytes proof; 
+        bytes32 rootHash;
+        string previousLeafHash;
+        uint256 index;
+    }
+
     event CorrectProofEvent(bool returnValue);
 
-    function checkProofOrdered(bytes memory proof, bytes32 root, string memory hash, 
-    uint256 index) public returns (bool) {
+    function checkProofOrdered(ProofVariables memory proofVar) public returns (bool) {
         // use the index to determine the node ordering
         // index ranges 1 to n
 
@@ -19,37 +25,38 @@ contract MerkleProof {
         bytes32 h;
         uint256 remaining;
         bool isHashed = false;
+        bytes memory localProof = proofVar.proof;
 
-        for (uint256 j = 32; j <= proof.length; j += 32) {
+        for (uint256 j = 32; j <= proofVar.proof.length; j += 32) {
             assembly {
-                el := mload(add(proof, j))
+                el := mload(add(localProof, j))
             }
 
             // calculate remaining elements in proof
-            remaining = (proof.length - j + 32) / 32;
+            remaining = (proofVar.proof.length - j + 32) / 32;
 
             if (!isHashed) {
-                if (index % 2 == 0) {
-                    h = keccak256(abi.encodePacked(el, hash));
-                    index = index / 2;
+                if (proofVar.index % 2 == 0) {
+                    h = keccak256(abi.encodePacked(el, proofVar.previousLeafHash));
+                    proofVar.index = proofVar.index / 2;
                 } else {
-                    h = keccak256(abi.encodePacked(hash, el));
-                    index = uint(index) / 2 + 1;
+                    h = keccak256(abi.encodePacked(proofVar.previousLeafHash, el));
+                    proofVar.index = uint(proofVar.index) / 2 + 1;
                 }
                 isHashed = true;
             } else {
-                if (index % 2 == 0) {
+                if (proofVar.index % 2 == 0) {
                     h = keccak256(abi.encodePacked(el, h));
-                    index = index / 2;
+                    proofVar.index = proofVar.index / 2;
                 } else {
                     h = keccak256(abi.encodePacked(h, el));
-                    index = uint(index) / 2 + 1;
+                    proofVar.index = uint(proofVar.index) / 2 + 1;
                 }
             }
 
         }
-        emit CorrectProofEvent(h == root);
-        return h == root;
+        emit CorrectProofEvent(h == proofVar.rootHash);
+        return h == proofVar.rootHash;
     }
 
     function checkProofsOrdered(bytes[] memory proofs, bytes32 root, string memory leafs) 
@@ -64,7 +71,13 @@ contract MerkleProof {
         bytes memory proof = proofs[i];
         leaf = getSlice(i+1, i+4, leafs);
         uint8 index = i+1;
-        bool result = checkProofOrdered(proof, root, leaf, index);
+        ProofVariables memory proofVar = ProofVariables({
+                proof: proof,
+                rootHash: root,
+                previousLeafHash: leaf,
+                index: index
+        });
+        bool result = checkProofOrdered(proofVar);
         if(!result) {
             valid = false;
             break;

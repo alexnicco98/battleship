@@ -9,3 +9,8 @@ server.js
 
 #images
 *.png
+
+#temporary library 
+/contracts/libs/Math.sol
+/contracts/libs/SignedMath.sol
+/contracts/libs/Strings.sol
