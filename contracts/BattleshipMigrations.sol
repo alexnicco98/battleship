@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
-pragma experimental ABIEncoderV2;
+pragma solidity >=0.8.0 <0.9.0;
+pragma abicoder v2;
 
 contract BattleshipMigrations {
     address public owner = msg.sender; // address of the contract owner

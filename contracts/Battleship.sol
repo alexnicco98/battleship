@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
-pragma experimental ABIEncoderV2;
+pragma solidity >=0.8.0 <0.9.0;
+pragma abicoder v2;
+// Web3.js v1.10.0
 
 /** Commands to set-up the initial environment:
     npm install solc@0.8.19
@@ -12,27 +13,27 @@ pragma experimental ABIEncoderV2;
 
 import "./interfaces/IntBattleshipStorage.sol";
 import "./interfaces/IntBattleshipStruct.sol";
-import "./interfaces/IntBattleshipLogic.sol";
+//import "./interfaces/IntBattleshipLogic.sol";
 import "./libs/MerkleProof.sol";
-import "./libs/Strings.sol";
+//import "./libs/Strings.sol";
 
-abstract contract Battleship is IntBattleshipStruct, MerkleProof, IntBattleshipLogic {
+contract Battleship is IntBattleshipStruct, MerkleProof {
 
     IntBattleshipStorage dataStorage;
     MerkleProof merkleProof;
-    IntBattleshipLogic gameLogic;
-    address payable owner;
+    //IntBattleshipLogic gameLogic;
+    address owner;
 
-    constructor(address _dataStorage, address _gameLogicAddress) {
+    constructor(address _dataStorage) {
         dataStorage = IntBattleshipStorage(_dataStorage);
         merkleProof = new MerkleProof();
-        owner = payable(gameLogic.msgSender());
-        gameLogic = IntBattleshipLogic(_gameLogicAddress);
+        owner = dataStorage.msgSender();
+        //gameLogic = IntBattleshipLogic(_gameLogicAddress);
     }
     
     event PlayerJoinedLobby(address _playerAddress, GamePhase _gamePhase);
     event BattleStarted(uint _battleId, GamePhase _gamePhase, address[2] _players);
-    event ConfirmShotStatus(uint _battleId, address _confirmingPlayer, address _opponent, uint8[2] _position, IntBattleshipLogic.ShipPositionMapping _shipDetected);
+    event ConfirmShotStatus(uint _battleId, address _confirmingPlayer, address _opponent, uint8[2] _position, ShipPosition _shipDetected);
     event AttackLaunched(uint _battleId, address _launchingPlayer, address _opponent, uint8 _attackingPositionX, uint8 _attackingPositionY);
     event WinnerDetected(uint _battleId, address _winnerAddress, address _opponentAddress);
     event ConfirmWinner(uint _battleId, address _winnerAddress, address _opponentAddress, uint _reward);
@@ -174,7 +175,7 @@ abstract contract Battleship is IntBattleshipStruct, MerkleProof, IntBattleshipL
     uint8 _attackingPositionY) public returns (bool) {
         BattleModel memory battle = dataStorage.getBattle(_battleId);
         GamePhaseDetail memory gamePhaseDetail = dataStorage.getGamePhaseDetails(battle.gamePhase);
-        address player = gameLogic.msgSender();
+        address player = dataStorage.msgSender();
         address opponent = battle.host == player ? battle.client : battle.host;
         address nextTurn = dataStorage.getTurnByBattleId(_battleId);
         uint lastPlayTime = dataStorage.getLastPlayTimeByBattleId(_battleId);
@@ -184,14 +185,13 @@ abstract contract Battleship is IntBattleshipStruct, MerkleProof, IntBattleshipL
         require(nextTurn == player, "Wait till next turn");
 
         // Get the status of the position hit
-        ShipPositionMapping memory shipPosition = gameLogic.getShipPosition(_previousPositionLeaf);
+        ShipPosition memory shipPosition = dataStorage.getShipPosition(_previousPositionLeaf);
         ProofVariables memory proofVar;
 
         {   
             uint batID = _battleId;
-            string memory prevPosLeaf = Strings.toString(_previousPositionLeaf);
             bytes memory prevPosProof = _previousPositionProof;
-            proofVar = getProofVariables(batID, player, opponent, prevPosLeaf, prevPosProof, shipPosition);
+            proofVar = getProofVariables(batID, player, opponent, _previousPositionLeaf, prevPosProof, shipPosition);
         }
 
         require(merkleProof.checkProofOrdered(proofVar), "The proof and position combination indicates an invalid move");
@@ -206,11 +206,11 @@ abstract contract Battleship is IntBattleshipStruct, MerkleProof, IntBattleshipL
         return true;
     }
 
-function getProofVariables(uint _battleId, address player, address opponent, string memory _previousPositionLeaf, 
-bytes memory _previousPositionProof, ShipPositionMapping memory _shipPosition) internal returns (ProofVariables memory) {
+function getProofVariables(uint _battleId, address player, address opponent, uint8 _previousPositionLeaf, 
+bytes memory _previousPositionProof, ShipPosition memory _shipPosition) internal returns (ProofVariables memory) {
     uint8[2] memory previousPositionIndex = dataStorage.getLastFiredPositionIndexByBattleIdAndPlayer(_battleId, opponent);
     bytes32 root = dataStorage.getMerkleTreeRootByBattleIdAndPlayer(_battleId, player);
-    uint256 index = (previousPositionIndex[1] * gameLogic.getGridDimensionN()) + previousPositionIndex[0] + 1;
+    uint256 index = (previousPositionIndex[1] * dataStorage.getGridDimensionN()) + previousPositionIndex[0] + 1;
 
     // Emit an event containing more details about the last shot fired
     emit ConfirmShotStatus(_battleId, player, opponent, previousPositionIndex, _shipPosition);
@@ -235,14 +235,14 @@ bytes memory _previousPositionProof, ShipPositionMapping memory _shipPosition) i
     }
     
     //Checks if there is a winner in the game.
-    function checkForWinner(uint _battleId, address _playerAddress, address _opponentAddress, ShipPositionMapping memory _shipPosition) private returns (bool){
+    function checkForWinner(uint _battleId, address _playerAddress, address _opponentAddress, ShipPosition memory _shipPosition) private returns (bool){
         //Add to the last position hit
         if(_shipPosition.state != ShipState.None) dataStorage.setCorrectPositionsHitByBattleIdAndPlayer(_battleId, _playerAddress, _shipPosition);
         
         //Get The total positions hit
-        ShipPositionMapping[] memory correctPositionsHit = dataStorage.getCorrectPositionsHitByBattleIdAndPlayer(_battleId, _playerAddress);
+        ShipPosition[] memory correctPositionsHit = dataStorage.getCorrectPositionsHitByBattleIdAndPlayer(_battleId, _playerAddress);
         
-        if(correctPositionsHit.length == gameLogic.getSumOfShipSize())
+        if(correctPositionsHit.length == dataStorage.getSumOfShipSize())
         {
             //A winner has been found. Call  the game to a halt, and let the verification process begin.
             BattleModel memory battle = dataStorage.getBattle(_battleId);
@@ -259,9 +259,9 @@ bytes memory _previousPositionProof, ShipPositionMapping memory _shipPosition) i
     function collectReward(uint _battleId) public returns (bool)
     {
         BattleModel memory battle = dataStorage.getBattle(_battleId);
-        address payable playerAddress = payable(gameLogic.msgSender());
+        address playerAddress = dataStorage.msgSender();
         GamePhaseDetail memory gamePhaseDetail = dataStorage.getGamePhaseDetails(battle.gamePhase);
-        address payable transactionOfficer = payable(address(dataStorage.getTransactionOfficer()));
+        address transactionOfficer = address(dataStorage.getTransactionOfficer());
 
         require(battle.isCompleted, "Battle is not yet completed");
         require(battle.winner == playerAddress, "Only the suspected winner of the battle can access this function");
@@ -283,7 +283,7 @@ bytes memory _previousPositionProof, ShipPositionMapping memory _shipPosition) i
     }
     
   
-    function transfer(address payable _recipient, uint _amount) private 
+    function transfer(address _recipient, uint _amount) private 
      {
          (bool success, ) = _recipient.call{value : _amount}("");
          require(success, "Transfer failed.");

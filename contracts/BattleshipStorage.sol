@@ -1,31 +1,33 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
-pragma experimental ABIEncoderV2;
+pragma solidity >=0.8.0 <0.9.0;
+pragma abicoder v2;
 
 import "./interfaces/IntBattleshipStruct.sol";
-import "./interfaces/IntBattleshipLogic.sol";
+//import "./interfaces/IntBattleshipLogic.sol";
 
-abstract contract BattleshipStorage is IntBattleshipStruct, IntBattleshipLogic {
+contract BattleshipStorage is IntBattleshipStruct {
+    
     // in the next development, should be a non-fixed variable that
     // the host player chose at the moment of creation of the game
-    uint8 constant private gridDimensionN = 4;
+    uint8 private gridDimensionN = 4;
+    uint8 private numShips = 2;
     uint256 private gameId;
     uint256 private minTimeRequiredForPlayerToRespond;
     uint256 private maxNumberOfMissiles;
     uint256 private minStakingAmount;
     uint256 private totalNumberOfPlayers;
-    address[] private playerAddresses;
     address payable private owner;
     address payable private transactionOfficer;
     uint256 private rewardCommissionRate;
     uint256 private cancelCommissionRate;
     bool private isTest;
+    //ShipPosition[] public shipPositionMapping;
+    uint8 public sumOfShipSizes = 0;
+    uint8 private gridSquare;
 
     address private battleShipContractAddress;
-    IntBattleshipLogic private gameLogic;
+    //IntBattleshipLogic private gameLogic;
 
-
-    mapping(uint8 => uint8) private shipSizes;
     mapping(uint256 => BattleModel) private battles;
     mapping(address => PlayerModel) private players;
     mapping(uint256 => mapping(address => mapping(uint256 => bytes32))) private revealedPositions;
@@ -35,9 +37,9 @@ abstract contract BattleshipStorage is IntBattleshipStruct, IntBattleshipLogic {
     mapping(uint256 => mapping(address => uint8[2])) private lastFiredPositionIndex;
     mapping(uint256 => address) private turn;
     mapping(uint256 => uint256) private lastPlayTime;
-    mapping(uint256 => mapping(address => ShipPositionMapping[])) correctPositionsHit;
+    mapping(uint256 => mapping(address => ShipPosition[])) correctPositionsHit;
     mapping(uint256 => mapping(address => VerificationStatus)) private battleVerification;
-    mapping(uint256 => mapping(address => string)) private revealedLeafs;
+    mapping(uint256 => mapping(address => uint8)) private revealedLeafs;
     mapping(GamePhase => LobbyModel) private lobbyMap;
     mapping(GamePhase => GamePhaseDetail) private gamePhaseMapping;
 
@@ -53,20 +55,230 @@ abstract contract BattleshipStorage is IntBattleshipStruct, IntBattleshipLogic {
         _;
     }
 
-    constructor(bool _isTest, address _gameLogic) {
+    constructor(bool _isTest) {
         gameId = 0;
-        owner = payable(address(msg.sender));
-        for (uint8 i = 0; i < gridDimensionN - 1; i++) {
-            shipSizes[i] = i + 1;
-        }
         // TODO: change to be the number of cels inside the matrix
-        maxNumberOfMissiles = 16;
+        maxNumberOfMissiles = gridDimensionN * gridDimensionN;
         isTest = _isTest;
-        gameLogic = IntBattleshipLogic(_gameLogic);
+        //gameLogic = IntBattleshipLogic(_gameLogic);
 
         gamePhaseMapping[GamePhase.Placement] = GamePhaseDetail(minStakingAmount, GamePhase.Placement, minTimeRequiredForPlayerToRespond);
         gamePhaseMapping[GamePhase.Shooting] = GamePhaseDetail(minStakingAmount, GamePhase.Placement, minTimeRequiredForPlayerToRespond);
         gamePhaseMapping[GamePhase.Gameover] = GamePhaseDetail(minStakingAmount, GamePhase.Placement, minTimeRequiredForPlayerToRespond);
+        initializeShipPositionMapping();
+        gridSquare = gridDimensionN * gridDimensionN;
+    }
+
+
+    function initializeShipPositionMapping() private {
+        uint8 shipSizes;
+        uint8 axisX;
+        uint8 axisY;
+        for (uint8 i = 0; i < numShips; i++) {
+            shipSizes = i + 1;
+            sumOfShipSizes += shipSizes;
+            (axisX, axisY) = generateRandomAxis(shipSizes, generateRandomDirection());
+            players[owner].shipPositions.push(ShipPosition({
+                shipLength: shipSizes,
+                direction: generateRandomDirection(),
+                axisX: 0,
+                axisY: 0,
+                state: ShipState.Intact
+            }));
+        }
+    }
+
+    // generate a random ship direction
+    function generateRandomDirection() private view returns (ShipDirection) {
+        uint8 randomValue = uint8(uint256(keccak256(abi.encodePacked(block.timestamp, block.difficulty))) % 2);
+        if (randomValue == 0) {
+            return ShipDirection.Vertical;
+        } else {
+            return ShipDirection.Horizontal;
+        }
+    }
+
+    function generateRandomAxis(uint8 shipLength, ShipDirection direction) private view returns (uint8 axisX, uint8 axisY) {
+        uint8 gridSize = gridDimensionN; // Change this to your grid size
+        require(gridSize > 0, "Grid size must be greater than 0");
+
+        // Generate random X and Y coordinates within the grid size
+        axisX = uint8(uint256(keccak256(abi.encodePacked(block.timestamp, block.difficulty, msg.sender, shipLength, direction))) % gridSize);
+        axisY = uint8(uint256(keccak256(abi.encodePacked(block.timestamp, block.difficulty, msg.sender, shipLength, direction, axisX))) % gridSize);
+
+        // Adjust X and Y coordinates based on ship length and direction to ensure the entire ship fits within the grid
+        if (direction == ShipDirection.Horizontal) {
+            // Check if the ship goes out of bounds on the X-axis
+            while (axisX + shipLength > gridSize) {
+                axisX = uint8(uint256(keccak256(abi.encodePacked(block.timestamp, block.difficulty, msg.sender, shipLength, direction, axisX))) % gridSize);
+            }
+        } else if (direction == ShipDirection.Vertical) {
+            // Check if the ship goes out of bounds on the Y-axis
+            while (axisY + shipLength > gridSize) {
+                axisY = uint8(uint256(keccak256(abi.encodePacked(block.timestamp, block.difficulty, msg.sender, shipLength, direction, axisY))) % gridSize);
+            }
+        }
+
+        return (axisX, axisY);
+    }
+
+
+
+    // check if the ship position is valid or is overlapping w.r.t. another ship
+    function areShipsNonOverlapping(uint8[] memory startXPositions, uint8[] memory startYPositions,
+    uint8[] memory shipLengths, ShipDirection[] memory directions) private view returns (bool) { 
+        uint8 nShips = uint8(shipLengths.length);
+        uint8[] memory shipLen; 
+        uint8[] memory staPosX; 
+        uint8[] memory staPosY; 
+        ShipDirection[] memory dir= directions;
+
+        {
+            shipLen = shipLengths;
+            staPosX = startXPositions;
+            staPosX = startYPositions;
+        }
+
+        for (uint8 i = 0; i < nShips; i++) {
+            uint8 startX = staPosX[i];
+            uint8 startY = staPosY[i];
+            uint8 shipLength = shipLen[i];
+            ShipDirection direction = dir[i];
+
+            for (uint8 j = 0; j < shipLength; j++) {
+                uint8 x = getShipPositionX(startX, j, direction);
+                uint8 y = getShipPositionY(startY, j, direction);
+
+                if (!isWithinGrid(x, y, gridDimensionN)) {
+                    return false;
+                }
+
+                if (doesOverlap(i, staPosX, staPosY, shipLen, dir)) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    function getShipPositionX(uint8 startX, uint8 j, ShipDirection direction) private pure returns (uint8) {
+        return direction == ShipDirection.Horizontal ? startX + j : startX;
+    }
+
+    function getShipPositionY(uint8 startY, uint8 j, ShipDirection direction) private pure returns (uint8) {
+        return direction == ShipDirection.Vertical ? startY + j : startY;
+    }
+
+    function isWithinGrid(uint8 x, uint8 y, uint8 gridSize) private pure returns (bool) {
+        return x < gridSize && y < gridSize;
+    }
+
+    function doesOverlap(uint8 shipIndex, uint8[] memory startXPositions,
+    uint8[] memory startYPositions, uint8[] memory shipLengths, ShipDirection[] memory directions
+    ) private pure returns (bool) {
+        for (uint8 k = 0; k < shipIndex; k++) {
+            if (doShipsOverlap(shipIndex, k, startXPositions, startYPositions, shipLengths, directions)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function doShipsOverlap(uint8 shipIndexA, uint8 shipIndexB,
+    uint8[] memory startXPositions, uint8[] memory startYPositions, uint8[] memory shipLengths,
+    ShipDirection[] memory directions) private pure returns (bool) {
+        uint8 startX_A = startXPositions[shipIndexA];
+        uint8 startY_A = startYPositions[shipIndexA];
+        uint8 shipLength_A = shipLengths[shipIndexA];
+        ShipDirection direction_A = directions[shipIndexA];
+
+        uint8 startX_B = startXPositions[shipIndexB];
+        uint8 startY_B = startYPositions[shipIndexB];
+        uint8 shipLength_B = shipLengths[shipIndexB];
+        ShipDirection direction_B = directions[shipIndexB];
+
+        for (uint8 m = 0; m < shipLength_A; m++) {
+            uint8 x_A = getShipPositionX(startX_A, m, direction_A);
+            uint8 y_A = getShipPositionY(startY_A, m, direction_A);
+
+            for (uint8 n = 0; n < shipLength_B; n++) {
+                uint8 x_B = getShipPositionX(startX_B, n, direction_B);
+                uint8 y_B = getShipPositionY(startY_B, n, direction_B);
+
+                if (x_A == x_B && y_A == y_B) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    // Logic related function
+
+    function getShipPosition(address _address, uint8 index) external view returns (ShipPosition memory) {
+        return players[_address].shipPositions[index];
+    }
+
+    function getSumOfShipSize() external view returns (uint8) {
+        return sumOfShipSizes;
+    }
+
+    function getGridDimensionN() external view returns (uint8) {
+        return gridDimensionN;
+    }
+
+    function setGridDimensionN(uint8 newValue) external{
+        gridDimensionN = newValue;
+    }
+
+    function msgSender() external view returns(address sender) {
+        if(msg.sender == address(this)) {
+            bytes memory array = msg.data;
+            uint256 index = msg.data.length;
+            assembly ("memory-safe"){
+                // Load the 32 bytes word from memory with the address on the lower 20 bytes, and mask those.
+                sender := and(mload(add(array, index)), 0xffffffffffffffffffffffffffffffffffffffff)
+            }
+        } else {
+            return msg.sender;
+        }
+    }
+
+     function getShipTypeFromIndex(uint8 _index) public view returns (uint8){
+        if (_index >= 0 && _index < gridDimensionN) {
+            // Ship length is from 1 to n-1 (index+1) for gridDimensionN = 10
+            return _index + 1;
+        } else {
+            return 0; // 0 represents None
+        }
+     }
+
+     function getBytes32FromBytes(bytes memory value, uint index) public pure returns(bytes32){
+        bytes32 el;
+        uint position = 32 * (index + 1);
+        //Require That the length of the bytes covers the position to be read from
+        require(value.length >= position, "The value requested is not within the range of the bytes");
+        assembly ("memory-safe") {
+        el := mload(add(value, position))
+        }
+        
+        return el;
+    }
+
+    function stringToUint8(string memory str) public pure returns (uint8) {
+        bytes memory strBytes = bytes(str);
+        require(strBytes.length > 0, "Empty string");
+
+        uint8 result = 0;
+        for (uint256 i = 0; i < strBytes.length; i++) {
+            uint8 digit = uint8(strBytes[i]) - 48; // Subtract the ASCII value of '0' (48) to get the digit
+            require(digit <= 9, "Invalid character in the string"); // Check if the character is a valid digit
+            result = result * 10 + digit; // Build the number digit by digit
+        }
+
+        return result;
     }
 
     // Battle related functions
@@ -196,11 +408,11 @@ abstract contract BattleshipStorage is IntBattleshipStruct, IntBattleshipLogic {
 
     // Correct positions hit related functions
 
-    function getCorrectPositionsHitByBattleIdAndPlayer(uint256 _battleId, address _player) external view returns (ShipPositionMapping[] memory) {
+    function getCorrectPositionsHitByBattleIdAndPlayer(uint256 _battleId, address _player) external view returns (ShipPosition[] memory) {
         return correctPositionsHit[_battleId][_player];
     }
 
-    function setCorrectPositionsHitByBattleIdAndPlayer(uint256 _battleId, address _player, ShipPositionMapping[] memory _positions) external returns (bool) {
+    function setCorrectPositionsHitByBattleIdAndPlayer(uint256 _battleId, address _player, ShipPosition[] memory _positions) external returns (bool) {
         correctPositionsHit[_battleId][_player] = _positions;
         return true;
     }
@@ -218,11 +430,11 @@ abstract contract BattleshipStorage is IntBattleshipStruct, IntBattleshipLogic {
 
     // Revealed leafs related functions
 
-    function getRevealedLeafsByBattleIdAndPlayer(uint256 _battleId, address _player) external view returns (string memory) {
+    function getRevealedLeafsByBattleIdAndPlayer(uint256 _battleId, address _player) external view returns (uint8) {
         return revealedLeafs[_battleId][_player];
     }
 
-    function setRevealedLeafsByBattleIdAndPlayer(uint256 _battleId, address _player, string memory _leafs) external returns (bool) {
+    function setRevealedLeafsByBattleIdAndPlayer(uint256 _battleId, address _player, uint8 _leafs) external returns (bool) {
         revealedLeafs[_battleId][_player] = _leafs;
         return true;
     }
@@ -245,9 +457,7 @@ abstract contract BattleshipStorage is IntBattleshipStruct, IntBattleshipLogic {
     
 }
 
-/*function getPlayerAddresses() external view returns (address[] memory) {
-        return playerAddresses;
-    }
+/*
 
     function setPlayerAddresses(address[] memory _playerAddresses) external onlyOwner returns (bool) {
         playerAddresses = _playerAddresses;

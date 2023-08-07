@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
-pragma experimental ABIEncoderV2;
+pragma solidity >=0.8.0 <0.9.0;
+pragma abicoder v2;
 
 import "./IntBattleshipStruct.sol";
-import "./IntBattleshipLogic.sol";
+//import "./IntBattleshipLogic.sol";
 
-interface IntBattleshipStorage is IntBattleshipStruct, IntBattleshipLogic {
+interface IntBattleshipStorage is IntBattleshipStruct {
     
     // Battle related functions
     function getBattle(uint _battleId) external view returns (BattleModel memory);
@@ -45,15 +45,15 @@ interface IntBattleshipStorage is IntBattleshipStruct, IntBattleshipLogic {
     function setTurnByBattleId(uint256 _battleId, address _turn) external returns (bool);
     
     function getLastPlayTimeByBattleId(uint256 _battleId) external view returns (uint256);
-    function setLastPlayTimeByBattleId(uint256 _battleId, uint256 _playTime) external returns (bool);
+    //function setLastPlayTimeByBattleId(uint256 _battleId, uint256 _playTime) external returns (bool);
     
     function getPositionsAttackedByBattleIdAndPlayer(uint256 _battleId, address _player) external view returns (uint8[] memory);
     function setPositionsAttackedByBattleIdAndPlayer(uint256 _battleId, address _player, uint8 attackingPositionX, uint8 attackingPositionY) external returns (bool);
     
     // Correct positions hit related functions
 
-    function getCorrectPositionsHitByBattleIdAndPlayer(uint256 _battleId, address _player) external view returns (ShipPositionMapping[] memory);
-    function setCorrectPositionsHitByBattleIdAndPlayer(uint256 _battleId, address _player, ShipPositionMapping memory _shipPosition) external returns (bool);
+    function getCorrectPositionsHitByBattleIdAndPlayer(uint256 _battleId, address _player) external view returns (ShipPosition[] memory);
+    function setCorrectPositionsHitByBattleIdAndPlayer(uint256 _battleId, address _player, ShipPosition memory _shipPosition) external returns (bool);
     
     // Battle verification related functions
 
@@ -65,6 +65,41 @@ interface IntBattleshipStorage is IntBattleshipStruct, IntBattleshipLogic {
     
     // Revealed leafs related functions
 
-    function getRevealedLeafsByBattleIdAndPlayer(uint256 _battleId, address _playerAddress) external view returns (string memory);
-    function setRevealedLeafsByBattleIdAndPlayer(uint256 _battleId, address _playerAddress, string memory _revealedLeafs) external returns (bool);
+    function getRevealedLeafsByBattleIdAndPlayer(uint256 _battleId, address _playerAddress) external view returns (uint8);
+    function setRevealedLeafsByBattleIdAndPlayer(uint256 _battleId, address _playerAddress, uint8 _revealedLeafs) external returns (bool);
+
+    function getSumOfShipSize() external view returns (uint8);
+    function getGridDimensionN() external view returns (uint8);
+    function setGridDimensionN(uint8 newValue) external;
+
+    function msgSender() external view returns(address sender);
+
+    function getPositionsOccupiedByAllShips() 
+    external view returns (uint8[] memory);
+
+    function getShipTypeFromIndex(uint8 index) external view returns (uint8);
+
+    /*function getShipInxesFromShipLength(uint8 shipLenght) 
+    external view returns (uint8[] memory);*/
+
+    //function getSlice(uint256 begin, uint256 end, string memory text) external view returns (string memory);
+
+    function getShipPosition(uint8 positionKey) 
+    external view returns (ShipPosition memory);
+
+    /*function checkProofOrdered(bytes memory proof, bytes32 root, 
+    string memory hash, uint256 index) external returns (bool);
+    
+    function checkProofsOrdered(bytes[] memory proofs, bytes32 root, 
+    string memory leafs) external returns (bool);*/
+
+    /*function checkProof(bytes32[] memory proof, bytes32 root, bytes32 leaf) 
+    external pure returns (bool);*/
+
+    //function getOrderedPositionsAndAxis(string memory positions) external pure returns (uint8[] memory, AxisType[5] memory);
+
+    /*function checkEqualArray(uint8[] memory arr1, uint8[] memory arr2) external pure returns (bool);
+
+    function getSliceOfBytesArray(bytes memory bytesArray, uint16 indexStart, uint16 indexStop) external pure returns (bytes memory);
+    */
 }

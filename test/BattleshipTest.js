@@ -28,8 +28,8 @@ contract("Battleship", accounts => {
     let previousPositionProofSubmittedByPlayerTwo = [];
 
     it("Should join a lobby and start a battle", () => {
-        let playerOneRootHash = "0xd22a8a4496b2d49a0a6c777d74a404c200dc24f99916fdfe5a72807b3355512e";
-        let playerTwoRootHash = "0x00871c4adab8e33d738b4555dbe16b70d1deab3bce2ec8a0fd215ab79e5ba275";
+        let playerOneRootHash = "0xc509DBED5b5da5AB96b0b3d9159cE3aaa9BCB57c";
+        let playerTwoRootHash = "0x88e13dA7445bE1E90b5d0FA141bDc1D750c8182F";
         let gamePhase = GamePhase.Placement;
 
         return Battleship.deployed()

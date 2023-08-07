@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
+pragma solidity >=0.8.0 <0.9.0;
 pragma experimental ABIEncoderV2;
 
 interface IntBattleshipStruct {
@@ -57,6 +57,7 @@ interface IntBattleshipStruct {
         uint256 totalEarning; // The total amount of money that has been won
         uint256 createdAt; // Date Last created;
         uint256 updatedAt; // Date last updated
+        ShipPosition[] shipPositions; // Array of ship positions
     }
 
     struct GamePhaseDetail {

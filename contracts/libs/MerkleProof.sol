@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
-pragma experimental ABIEncoderV2;
+pragma solidity >=0.8.0 <0.9.0;
+pragma abicoder v2;
 
 /**
  * @title MerkleProof
@@ -11,7 +11,7 @@ contract MerkleProof {
     struct ProofVariables{
         bytes proof; 
         bytes32 rootHash;
-        string previousLeafHash;
+        uint8 previousLeafHash;
         uint256 index;
     }
 
@@ -28,7 +28,7 @@ contract MerkleProof {
         bytes memory localProof = proofVar.proof;
 
         for (uint256 j = 32; j <= proofVar.proof.length; j += 32) {
-            assembly {
+            assembly ("memory-safe") {
                 el := mload(add(localProof, j))
             }
 
@@ -59,12 +59,12 @@ contract MerkleProof {
         return h == proofVar.rootHash;
     }
 
-    function checkProofsOrdered(bytes[] memory proofs, bytes32 root, string memory leafs) 
+    function checkProofsOrdered(bytes[] memory proofs, bytes32 root, uint8 leafs) 
     public returns (bool){
       bool valid = true;
 
       //Loop through the Leafs
-      string memory leaf = "";
+      uint8 leaf;
 
       for(uint8 i = 0; i < 100; i+=5)
       {
@@ -127,13 +127,14 @@ contract MerkleProof {
         return leafNodes[0];
     }
 
-    function getSlice(uint256 begin, uint256 end, string memory text) internal pure returns (string memory) {
-        bytes memory a = new bytes(end-begin+1);
-        for(uint i=0;i<=end-begin;i++){
-            a[i] = bytes(text)[i+begin-1];
+    function getSlice(uint8 begin, uint8 end, uint8 value) internal pure returns (uint8) {
+        require(end >= begin, "Invalid slice range");
+        require(end <= 8, "End position exceeds uint256 size");
+
+        uint8 mask = uint8((2 ** (end - begin + 1)) - 1);
+        return (value >> begin) & mask;
         }
-        return string(a);
-    }
+
     
     /**
      * @dev Verifies a Merkle proof for a leaf element.

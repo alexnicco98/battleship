@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
-pragma experimental ABIEncoderV2;
+pragma solidity >=0.8.0 <0.9.0;
+pragma abicoder v2;
 
 import "./interfaces/IntBattleshipStorage.sol";
 import "./interfaces/IntBattleshipStruct.sol";
-import "./interfaces/IntBattleshipLogic.sol";
+//import "./interfaces/IntBattleshipLogic.sol";
 import "./libs/MerkleProof.sol";
 
 /**
@@ -14,14 +14,14 @@ import "./libs/MerkleProof.sol";
 contract BattleshipVerification is IntBattleshipStruct, MerkleProof {
     IntBattleshipStorage dataStorage;
     MerkleProof merkleProof;
-    IntBattleshipLogic gameLogic;
+    //IntBattleshipLogic gameLogic;
     address payable owner;
 
-    constructor(address _dataStorage, address _gameLogic) {
+    constructor(address _dataStorage) { //, address _gameLogic
         dataStorage = IntBattleshipStorage(_dataStorage);
         merkleProof = new MerkleProof();
-        owner = payable(gameLogic.msgSender());
-        gameLogic = IntBattleshipLogic(_gameLogic);
+        owner = payable(dataStorage.msgSender());
+        //gameLogic = IntBattleshipLogic(_gameLogic);
     }
 
     event LeafVerificationComplete(uint256 _battleId, address _winner, bool _verificationResult);
@@ -34,9 +34,9 @@ contract BattleshipVerification is IntBattleshipStruct, MerkleProof {
      * @param _proofs The Merkle Tree proofs of the player's moves.
      * @return isTreeValid Whether the Merkle Tree leafs are valid.
      */
-    function verifyLeafs(uint256 _battleId, string memory _leafs, bytes[] memory _proofs) public returns (bool) {
+    function verifyLeafs(uint256 _battleId, uint8 _leafs, bytes[] memory _proofs) public returns (bool) {
         BattleModel memory battle = dataStorage.getBattle(_battleId);
-        address player = gameLogic.msgSender();
+        address player = dataStorage.msgSender();
         bytes32 root = dataStorage.getMerkleTreeRootByBattleIdAndPlayer(_battleId, player);
 
         require(battle.isCompleted, "Battle is not yet completed");
