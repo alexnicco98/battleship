@@ -63,8 +63,8 @@ contract BattleshipStorage is IntBattleshipStruct {
         //gameLogic = IntBattleshipLogic(_gameLogic);
 
         gamePhaseMapping[GamePhase.Placement] = GamePhaseDetail(minStakingAmount, GamePhase.Placement, minTimeRequiredForPlayerToRespond);
-        gamePhaseMapping[GamePhase.Shooting] = GamePhaseDetail(minStakingAmount, GamePhase.Placement, minTimeRequiredForPlayerToRespond);
-        gamePhaseMapping[GamePhase.Gameover] = GamePhaseDetail(minStakingAmount, GamePhase.Placement, minTimeRequiredForPlayerToRespond);
+        gamePhaseMapping[GamePhase.Shooting] = GamePhaseDetail(minStakingAmount, GamePhase.Shooting, minTimeRequiredForPlayerToRespond);
+        gamePhaseMapping[GamePhase.Gameover] = GamePhaseDetail(minStakingAmount, GamePhase.Gameover, minTimeRequiredForPlayerToRespond);
         initializeShipPositionMapping();
         gridSquare = gridDimensionN * gridDimensionN;
     }
@@ -331,12 +331,12 @@ contract BattleshipStorage is IntBattleshipStruct {
         return gamePhaseMapping[_gamePhase];
     }
 
-    /*function setGamePhaseDetails(GamePhase _gamePhase, GamePhaseDetail memory _detail) external returns (bool) {
+    function setGamePhaseDetails(GamePhase _gamePhase, GamePhaseDetail memory _detail) external returns (bool) {
         gamePhaseMapping[_gamePhase] = _detail;
         return true;
-    }*/
+    }
 
-    function getLobbyByGamePhase(GamePhase _gamePhase) external view returns (LobbyModel memory) {
+    /*function getLobbyByGamePhase(GamePhase _gamePhase) external view returns (LobbyModel memory) {
         return lobbyMap[_gamePhase];
     }
 
@@ -385,16 +385,14 @@ contract BattleshipStorage is IntBattleshipStruct {
         return true;
     }
 
-    function getLastPlayTimeByBattleId (uint _battleId) external view returns (uint)
-    {
+    function getLastPlayTimeByBattleId (uint _battleId) external view returns (uint){
         return lastPlayTime[_battleId];
     }
     
-    /*function setLastPlayTimeByBattleId(uint _battleId, uint _playTime) external returns (bool)
-    {
+    function setLastPlayTimeByBattleId(uint _battleId, uint _playTime) external returns (bool){
         lastPlayTime[_battleId] = _playTime;
         return true;
-    }*/
+    }
 
     function getPositionsAttackedByBattleIdAndPlayer(uint256 _battleId, address _player) external view returns (uint8[] memory) {
         return positionsAttacked[_battleId][_player];

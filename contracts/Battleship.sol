@@ -290,5 +290,4 @@ bytes memory _previousPositionProof, ShipPosition memory _shipPosition) internal
          emit Transfer(_recipient, _amount, address(this).balance);
      }
   
-    
  }

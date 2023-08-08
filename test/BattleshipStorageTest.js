@@ -2,26 +2,26 @@ const BattleshipStorage = artifacts.require("BattleshipStorage");
 const IntBattleshipStruct =artifacts.require("IntBattleshipStruct");
 /*const ShipType = IDataStorageSchema.ShipType;
 const AxisType = IDataStorageSchema.AxisType;
-const GameMode = IDataStorageSchema.GameMode;*/
+const GamePhase = IDataStorageSchema.GamePhase;*/
 const ShipDirection = IntBattleshipStruct.ShipDirection;
 const ShipState = IntBattleshipStruct.ShipState;
 const GamePhase = IntBattleshipStruct.GamePhase;
 
-/*contract("BattleshipStorage", dataStorage=>{
+contract("BattleshipStorage", dataStorage=>{
     it("Should set game mode details", ()=>{
         let dataStorage;
-        let gamePhase = GameMode.Professional;
+        let gamePhase = GamePhase.Placement;
         let expectedResult = true; 
 
-        const gameModeDetail = {
+        const gamePhaseDetail = {
             stake: 2,
-            gameType: gameMode,
+            gamePhase: gamePhase,
             maxTimeForPlayerToPlay: 10
         };
-        return DataStorage.deployed()
+        return BattleshipStorage.deployed()
         .then(instance =>{
             dataStorage = instance;
-            return instance.setGameModeDetails(gameMode, gameModeDetail)            
+            return instance.setGamePhaseDetails(gamePhase, gamePhaseDetail)            
         })
         .then(result=>{
             assert.equal(result.receipt.status, expectedResult, "Incorrect game mode");
@@ -30,15 +30,15 @@ const GamePhase = IntBattleshipStruct.GamePhase;
 
     it("Should return correct game mode", ()=>{
         let dataStorage;
-        let gameMode = GameMode.Professional;
+        let gamePhase = GamePhase.Shooting;
 
-        return DataStorage.deployed()
+        return BattleshipStorage.deployed()
         .then(instance=>{
             dataStorage = instance;
-            return instance.getGameModeDetails(gameMode);
+            return instance.getGamePhaseDetails(gamePhase);
         })
         .then(result=>{
-            assert.equal(result.gameType, gameMode);
+            assert.equal(result.gamePhase, gamePhase);
         })
     });
 
@@ -47,10 +47,10 @@ const GamePhase = IntBattleshipStruct.GamePhase;
         let expectedResult = true;
         let battleId = 1000;
         let playTime = 600000;
-        return DataStorage.deployed()
+        return BattleshipStorage.deployed()
         .then(instance=>{
             dataStorage = instance;
-            return dataStorage.setLastPlayTime(battleId, playTime);
+            return dataStorage.setLastPlayTimeByBattleId(battleId, playTime);
         })
         .then(result=>{
             assert.equal(result.receipt.status, expectedResult,expectedResult);
@@ -61,14 +61,14 @@ const GamePhase = IntBattleshipStruct.GamePhase;
         let dataStorage;
         let battleId = 1000;
         let playTime = 600000;
-        return DataStorage.deployed()
+        return BattleshipStorage.deployed()
         .then(instance=>{
             dataStorage = instance;
-            return dataStorage.getLastPlayTime(battleId);
+            return dataStorage.getLastPlayTimeByBattleId(battleId);
         })
         .then(result=>{
             assert.equal(result.words[0],playTime);
         })
     });
-});*/
+});
 

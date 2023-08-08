@@ -63,7 +63,7 @@ module.exports = {
          enabled: true,
          runs: 200
        },
-       evmVersion: 'london',
+       //evmVersion: 'london',
        viaIR: true, // Enable VIA-IR code generation
        evmVersion: "byzantium"
       }

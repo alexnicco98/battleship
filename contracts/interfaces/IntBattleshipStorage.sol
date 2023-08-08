@@ -16,7 +16,7 @@ interface IntBattleshipStorage is IntBattleshipStruct {
     
     //function setGameLogicAddress(address _gameLogicAddress) external returns (bool);
     function getGamePhaseDetails(GamePhase _gamePhase) external view returns (GamePhaseDetail memory);
-    //function setGamePhaseDetails(GamePhase _gamePhase, GamePhaseDetail memory _detail) external returns (bool);
+    function setGamePhaseDetails(GamePhase _gamePhase, GamePhaseDetail memory _detail) external returns (bool);
     function getLobbyByGamePhase(GamePhase _gamePhase) external view returns (LobbyModel memory);
     function setLobbyByGamePhase(GamePhase _gamePhase, LobbyModel memory _lobby) external returns (bool);
     
@@ -45,7 +45,7 @@ interface IntBattleshipStorage is IntBattleshipStruct {
     function setTurnByBattleId(uint256 _battleId, address _turn) external returns (bool);
     
     function getLastPlayTimeByBattleId(uint256 _battleId) external view returns (uint256);
-    //function setLastPlayTimeByBattleId(uint256 _battleId, uint256 _playTime) external returns (bool);
+    function setLastPlayTimeByBattleId(uint256 _battleId, uint256 _playTime) external returns (bool);
     
     function getPositionsAttackedByBattleIdAndPlayer(uint256 _battleId, address _player) external view returns (uint8[] memory);
     function setPositionsAttackedByBattleIdAndPlayer(uint256 _battleId, address _player, uint8 attackingPositionX, uint8 attackingPositionY) external returns (bool);

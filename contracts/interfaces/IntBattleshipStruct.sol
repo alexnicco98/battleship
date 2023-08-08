@@ -62,7 +62,7 @@ interface IntBattleshipStruct {
 
     struct GamePhaseDetail {
         uint256 stake;
-        GamePhase gameTime;
+        GamePhase gamePhase;
         uint256 maxTimeForPlayerToPlay;
     }
 
