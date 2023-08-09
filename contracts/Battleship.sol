@@ -38,10 +38,25 @@ contract Battleship is IntBattleshipStruct, MerkleProof {
     event WinnerDetected(uint _battleId, address _winnerAddress, address _opponentAddress);
     event ConfirmWinner(uint _battleId, address _winnerAddress, address _opponentAddress, uint _reward);
     event Transfer(address _to, uint _amount, uint _balance);
+    event StakeValue(uint value);
+    event Print();
 
+    function emitStackValueFromGamePhase(GamePhase _gamePhase) public {
+        //get the Game phase
+        GamePhaseDetail memory gamePhaseDetail = dataStorage.getGamePhaseDetails(_gamePhase);
+        
+         // Emit the stake value
+        emit StakeValue(gamePhaseDetail.stake);
+    }
+
+    function emitStackValueFromMsgValue() public payable {
+        emit StakeValue(msg.value);
+    }
     
     
-    function joinLobby(GamePhase _gamePhase, bytes32 _root, string memory _encryptedMerkleTree) public payable returns (uint){
+    function joinLobby(GamePhase _gamePhase, bytes32 _root, 
+    string memory _encryptedMerkleTree) 
+    public payable returns (uint){
         uint deposit = msg.value;
         address player = msg.sender;
         uint battleId = 0;
@@ -58,6 +73,8 @@ contract Battleship is IntBattleshipStruct, MerkleProof {
         
         //require that the sender is not already in the lobby
         require(lobby.occupant != player, "The occupant can not join in as the player");
+        
+        emit Print();
         
         //Check if there is currenly a player in the lobby
         if(!lobby.isOccupied) 
