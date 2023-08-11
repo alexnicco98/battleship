@@ -69,8 +69,8 @@ interface IntBattleshipStruct {
     struct LobbyModel {
         bool isOccupied; // Indicates whether or not there is an occupant in the lobby.
         address occupant; // Holds the address of the occupant
-        bytes32 positionRoot; // Holds the merkletree root of the player's positions
-        string encryptedMerkleTree; // Holds the full merkle tree, encrypted with the user's private key.
+        bytes32 playerOneRootHash; // Holds the merkletree root of the player one
+        bytes32 playerTwoRootHash; // Holds the merkletree root of the player two
     }
 
     struct BattleVerificationModel {

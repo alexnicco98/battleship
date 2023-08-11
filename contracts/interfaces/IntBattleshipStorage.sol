@@ -20,8 +20,8 @@ interface IntBattleshipStorage is IntBattleshipStruct {
         external view returns (GamePhaseDetail memory);
     function setGamePhaseDetails(GamePhase _gamePhase, GamePhaseDetail memory _detail) 
         external returns (bool);
-    function getLobbyByGamePhase(GamePhase _gamePhase) external view returns (LobbyModel memory);
-    function setLobbyByGamePhase(GamePhase _gamePhase, LobbyModel memory _lobby) 
+    function getLobbyByAddress(address _player) external view returns (LobbyModel memory);
+    function setLobbyByAddress(address _player, LobbyModel memory _lobby) 
         external returns (bool);
     
     // Player related functions
@@ -36,6 +36,7 @@ interface IntBattleshipStorage is IntBattleshipStruct {
         external view returns (string memory);
     function setEncryptedMerkleTreeByBattleIdAndPlayer(uint256 _battleId, address _player, 
         string memory _encryptedMerkleTree) external returns (bool);
+    function encryptMerkleTree(bytes32 merkleTree) external pure returns (bytes32);
     
     //function getRevealedPositionValueByBattleIdAndPlayer(uint256 _battleId, 
     //    address _revealingPlayer, uint8 _position) external view returns (bytes32);

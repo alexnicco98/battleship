@@ -10,8 +10,8 @@ contract("Battleship", accounts => {
     let battleshipStorageInstance;
     let battleId;
     let encryptedMerkleTree = "encryptedmerkletree";
-    let playerOne = accounts[1];
-    let playerTwo = accounts[2];
+    let playerOne = accounts[0];
+    let playerTwo = accounts[1];
 
     // Positions for player one and two
     let playerOnePositions = [
@@ -44,7 +44,7 @@ contract("Battleship", accounts => {
     });
 
     // DEBUG
-    it("should emit StakeValue event with correct stake value", async () => {
+    /*it("should emit StakeValue event with correct stake value", async () => {
         const _gamePhase = GamePhase.Placement; // Replace with your actual game phase
         
         // Perform the emitStackValue transaction
@@ -72,7 +72,7 @@ contract("Battleship", accounts => {
 
         // Display the emitted and actual stake values
         console.log("Emitted stake value 2:", emittedStakeValueTwo.toString());
-    });
+    });*/
 
     it("Should join a lobby and start a battle", async () => {
 
@@ -115,52 +115,50 @@ contract("Battleship", accounts => {
         let gamePhase = GamePhase.Placement;
 
         console.log("playerOneLeaves:", playerOneLeaves.toString());
-        console.log("playerOneRootHash:", playerOneRootHash.toString());
-    
+        //console.log("playerOneRootHash:", playerOneRootHash.toString());
+
+        // Player One
         let valueInWei = 100000000000000;
         let result;
 
-        result = await battleshipInstance.joinLobby(gamePhase, playerOneRootHash, 
-            encryptedMerkleTree, { from: playerOne, value: valueInWei });
+        result = await battleshipInstance.createLobby(gamePhase, playerOneRootHash, 
+            { from: playerOne, value: valueInWei });
+            
+        assert.equal(result.logs[0].args._playerAddress, playerOne, 
+            "Creator account is not valid"); 
 
-        battleId = result;
+        //Check if there is currently a player in the lobby
+        result = await battleshipStorageInstance.getLobbyByAddress(playerOne);
+
+        assert.equal(result.isOccupied, true, 
+            "Result must indicate that a player is already in the lobby");
             
-        assert.equal(result.logs[0].event, "PlayerJoinedLobby", 
-        "Event must indicate that a player has joined the lobby");
-        assert.equal(result.logs[0].args._player, playerOne, 
-        "Creator account is not valid");
-        assert.equal(result.logs[0].args._gamePhase.valueOf(), gamePhase, 
-        "Game mode is not valid");
-        /*try {
-            
-        } catch (error) {
-            console.error("Transaction reverted with reason:", error.reason);
-        }*/
-    
+        // Player Two
         valueInWei = 100000000000000;
-        try{
-            result = await battleshipInstance.joinLobby(gamePhase, playerTwoRootHash, 
-                encryptedMerkleTree, { from: playerTwo, value: valueInWei });
-            
-            battleId = result.logs[0].args._battleId;
-            let players = result.logs[0].args._players;
-            gamePhase = result.logs[0].args._gamePhase.valueOf();
+        result = await battleshipInstance.joinLobby(playerOne, gamePhase, playerTwoRootHash, 
+            { from: playerTwo, value: valueInWei });
         
-            // Check that the BattleStarted Event is emitted
-            assert.equal(result.logs[0].event, "BattleStarted", 
-                "Event must indicate that a battle has started");
+        battleId = result;
+
+        console.log("playerOneRootHash:", playerOneRootHash.toString());
+        console.log("playerTwoRootHash:", playerTwoRootHash.toString());
+    
+        // Check that the BattleStarted Event is emitted
+        assert.equal(result.logs[0].event, "BattleStarted", 
+            "Event must indicate that a battle has started");
+
+        //Check if there is currently a player in the lobby
+        const lobby = await battleshipStorageInstance.getLobbyByAddress(playerOne);
         
-            // Check if both players are included in the event log for the battle
-            assert.equal(players.includes(playerOne) && players.includes(playerTwo), 
-                true, "Battle must include both players");
-        
-            // Check that the game mode is equal to the game mode entered by the initial 
-            // player and also equal to the game mode entered by the current player
-            assert.equal(gamePhase == gamePhase, true, 
-                "Game mode must be equal to the starting game mode for the Match/Lobby");
-        }catch(error){
-            console.error("Transaction reverted with reason:", error.reason);
-        }
+        // Check if lobby is occupied
+        assert.equal(lobby.isOccupied, true, "Lobby should be occupied");
+    
+        // Check if both players are included in the event log for the battle
+        assert.equal(lobby.playerOneRootHash, 
+            playerOneRootHash, "Player one is included");
+
+        assert.equal(lobby.playerTwoRootHash, 
+            playerTwoRootHash, "Player two is included");
        
     });
 
@@ -170,7 +168,7 @@ contract("Battleship", accounts => {
         await battleshipStorageInstance.setEncryptedMerkleTreeByBattleIdAndPlayer(
             battleId, playerOne, playerOneLeaves);
             
-        // Retrieve encrypted MerkleTree
+        // Retrieve encrypted MerkleTree, return a bytes32 instead of a string
         const retrievedEncryptedMerkleTree = await battleshipInstance.getPlayersEncryptedPositions(
             battleId, { from: playerOne });
 

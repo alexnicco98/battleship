@@ -32,6 +32,7 @@ contract Battleship is IntBattleshipStruct, MerkleProof {
     }
     
     event PlayerJoinedLobby(address _playerAddress, GamePhase _gamePhase);
+    event PlayerCreatedLobby(address _playerAddress);
     event BattleStarted(uint _battleId, GamePhase _gamePhase, address[2] _players);
     event ConfirmShotStatus(uint _battleId, address _confirmingPlayer, address _opponent, uint8[2] _position, ShipPosition _shipDetected);
     event AttackLaunched(uint _battleId, address _launchingPlayer, address _opponent, uint8 _attackingPositionX, uint8 _attackingPositionY);
@@ -40,6 +41,7 @@ contract Battleship is IntBattleshipStruct, MerkleProof {
     event Transfer(address _to, uint _amount, uint _balance);
     event StakeValue(uint value);
     event Print();
+    event LogMessage(string message);
 
     function emitStackValueFromGamePhase(GamePhase _gamePhase) public {
         //get the Game phase
@@ -52,73 +54,125 @@ contract Battleship is IntBattleshipStruct, MerkleProof {
     function emitStackValueFromMsgValue() public payable {
         emit StakeValue(msg.value);
     }
-    
-    
-    function joinLobby(GamePhase _gamePhase, bytes32 _root, 
-    string memory _encryptedMerkleTree) 
+
+    function createLobby(GamePhase _gamePhase, bytes32 _root) 
     public payable returns (uint){
         uint deposit = msg.value;
         address player = msg.sender;
         uint battleId = 0;
+
+        // get the Game phase
+        GamePhaseDetail memory gamePhaseDetail = dataStorage.getGamePhaseDetails(_gamePhase);
         
+        // Require that the amount of money sent in greater or 
+        // equal to the required amount for this mode.
+        require(deposit == gamePhaseDetail.stake, 
+        "The amount of money deposited must be equal to the staking amount for this game mode");
+        
+        //Get the Lobby
+        LobbyModel memory lobby = LobbyModel({isOccupied: true, occupant: player,
+            playerOneRootHash: _root, playerTwoRootHash: 0x00
+        });
+
+        emit PlayerCreatedLobby(player);
+
+        // Update the lobby
+        dataStorage.setLobbyByAddress(player, lobby);
+        return battleId;
+    }
+
+    function joinLobby(address _creatorAddress, GamePhase _gamePhase, bytes32 _root) 
+    public payable returns (uint){
+        uint deposit = msg.value;
+        address player = msg.sender;
+        uint battleId = 0;
 
         //get the Game phase
         GamePhaseDetail memory gamePhaseDetail = dataStorage.getGamePhaseDetails(_gamePhase);
-        
-        //Require that the amount of money sent in greater or equal to the required amount for this mode.
-        require(deposit == gamePhaseDetail.stake, "The amount of money deposited must be equal to the staking amount for this game mode");
-        
-        //Get the Lobby
-        LobbyModel memory lobby = dataStorage.getLobbyByGamePhase(_gamePhase);
-        
+
+        // Require that the amount of money sent in greater or 
+        // equal to the required amount for this mode.
+        require(deposit == gamePhaseDetail.stake, 
+        "The amount of money deposited must be equal to the staking amount for this game mode");
+
+        //Get the Lobby 
+        LobbyModel memory lobby = dataStorage.getLobbyByAddress(_creatorAddress);
+
         //require that the sender is not already in the lobby
         require(lobby.occupant != player, "The occupant can not join in as the player");
         
-        emit Print();
+        // Check if there is currenly a player in the lobby
+        require(lobby.isOccupied == true, "There is a player in the lobby");
+
+        //Start a new match
+        uint totalStake = gamePhaseDetail.stake * 2;
+        battleId = dataStorage.createNewGameId();
+        BattleModel memory battle  = BattleModel(totalStake, lobby.occupant, player, 
+            block.timestamp, player, false, address(0), _gamePhase, 
+            gamePhaseDetail.maxTimeForPlayerToPlay, false, 0, block.timestamp, 
+            block.timestamp, false, false);       
         
-        //Check if there is currenly a player in the lobby
-        if(!lobby.isOccupied) 
-        {
-            lobby.occupant = player;
-            lobby.isOccupied = true;
-            lobby.positionRoot = _root;
-            lobby.encryptedMerkleTree = _encryptedMerkleTree;
-            emit PlayerJoinedLobby(player, _gamePhase);
-
-        }else
-        {
-            //Start a new match
-            uint totalStake = gamePhaseDetail.stake * 2;
-            battleId = dataStorage.createNewGameId();
-            BattleModel memory battle  = BattleModel(totalStake, lobby.occupant, player, block.timestamp, player, false, address(0), _gamePhase, gamePhaseDetail.maxTimeForPlayerToPlay, false, 0, block.timestamp, block.timestamp, false, false);
-            
-            //Set the encrypted merkle tree for both players
-            dataStorage.setEncryptedMerkleTreeByBattleIdAndPlayer(battleId, battle.host, lobby.encryptedMerkleTree);
-            dataStorage.setEncryptedMerkleTreeByBattleIdAndPlayer(battleId, battle.client, _encryptedMerkleTree);
-            
-            //Set the merkle tree root for both players.
-            dataStorage.setMerkleTreeRootByBattleIdAndPlayer(battleId, battle.host, lobby.positionRoot);
-            dataStorage.setMerkleTreeRootByBattleIdAndPlayer(battleId, battle.client, _root);
-            
-            //Set the Last Play Time
-            //dataStorage.setLastPlayTimeByBattleId(battleId, block.timestamp);
-            dataStorage.setTurnByBattleId(battleId, player);
-
-            lobby.occupant = address(0);
-            lobby.isOccupied = false;
-            lobby.positionRoot = "0x00";
-            lobby.encryptedMerkleTree = "";
-            dataStorage.updateBattleById(battleId, battle);
-            
-     
-            
-            emit BattleStarted(battleId, _gamePhase, [battle.host, battle.client]);
-
-        }
+        //Set the encrypted merkle tree for both players
+        /*dataStorage.setEncryptedMerkleTreeByBattleIdAndPlayer(battleId, battle.host, 
+            lobby.encryptedMerkleTree);
+        dataStorage.setEncryptedMerkleTreeByBattleIdAndPlayer(battleId, battle.client, 
+            _encryptedMerkleTree);*/
         
+        //Set the merkle tree root for both players.
+        dataStorage.setMerkleTreeRootByBattleIdAndPlayer(battleId, battle.host, lobby.playerOneRootHash);
+        dataStorage.setMerkleTreeRootByBattleIdAndPlayer(battleId, battle.client, _root);
+        
+        //Set the Last Play Time
+        //dataStorage.setLastPlayTimeByBattleId(battleId, block.timestamp);
+        dataStorage.setTurnByBattleId(battleId, player);
+
         // Update the lobby
-        dataStorage.setLobbyByGamePhase(_gamePhase, lobby);
+        lobby.playerTwoRootHash = _root;
+        dataStorage.setLobbyByAddress(_creatorAddress, lobby);
+        dataStorage.updateBattleById(battleId, battle);
+        
+        emit BattleStarted(battleId, _gamePhase, [battle.host, battle.client]);
+        
         return battleId;
+    }
+
+    function logMyMessage(string memory message) public {
+        emit LogMessage(message);
+    }
+
+    function lobbyModelToString(LobbyModel memory lobby) internal pure returns (string memory) {
+        string memory result;
+
+        // Convert boolean to string
+        result = string(abi.encodePacked(result, lobby.isOccupied ? "1" : "0"));
+
+        // Convert address to string
+        result = string(abi.encodePacked(result, addressToString(lobby.occupant)));
+
+        // Convert bytes32 to string
+        result = string(abi.encodePacked(result, bytes32ToString(lobby.playerOneRootHash)));
+
+        // Append encryptedMerkleTree
+        result = string(abi.encodePacked(result, lobby.playerTwoRootHash));
+
+        return result;
+    }
+
+    // Helper function to convert address to string
+    function addressToString(address addr) internal pure returns (string memory) {
+        bytes32 value = bytes32(uint256(uint160(addr)));
+        return bytes32ToString(value);
+    }
+
+    // Helper function to convert bytes32 to string
+    function bytes32ToString(bytes32 value) internal pure returns (string memory) {
+        bytes memory alphabet = "0123456789abcdef";
+        bytes memory str = new bytes(64);
+        for (uint256 i = 0; i < 32; i++) {
+            str[i * 2] = alphabet[uint8(value[i] >> 4)];
+            str[i * 2 + 1] = alphabet[uint8(value[i] & 0x0f)];
+        }
+        return string(str);
     }
     
     function getPlayersEncryptedPositions(uint _battleId) public view returns (string memory){

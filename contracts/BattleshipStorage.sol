@@ -40,7 +40,7 @@ contract BattleshipStorage is IntBattleshipStruct {
     mapping(uint256 => mapping(address => ShipPosition[])) correctPositionsHit;
     //mapping(uint256 => mapping(address => VerificationStatus)) private battleVerification;
     mapping(uint256 => mapping(address => uint8)) private revealedLeafs;
-    //mapping(GamePhase => LobbyModel) private lobbyMap;
+    mapping(address => LobbyModel) private lobbyMap;
     mapping(GamePhase => GamePhaseDetail) private gamePhaseMapping;
 
     modifier onlyOwner() {
@@ -122,7 +122,7 @@ contract BattleshipStorage is IntBattleshipStruct {
         return (axisX, axisY);
     }
 
-        // Function to create Merkle tree leaves
+    // Function to create Merkle tree leaves
     function createMerkleTreeLeaves(uint8[] memory shipLengths, uint8[] memory axisXs,
     uint8[] memory axisYs, ShipDirection[] memory directions) 
     public pure returns (bytes32[] memory) {
@@ -414,14 +414,14 @@ contract BattleshipStorage is IntBattleshipStruct {
         return true;
     }
 
-    /*function getLobbyByGamePhase(GamePhase _gamePhase) external view returns (LobbyModel memory) {
-        return lobbyMap[_gamePhase];
+    function getLobbyByAddress(address _player) external view returns (LobbyModel memory) {
+        return lobbyMap[_player];
     }
 
-    function setLobbyByGamePhase(GamePhase _gamePhase, LobbyModel memory _lobbyModel) external returns (bool) {
-        lobbyMap[_gamePhase] = _lobbyModel;
+    function setLobbyByAddress(address _player, LobbyModel memory _lobbyModel) external returns (bool) {
+        lobbyMap[_player] = _lobbyModel;
         return true;
-    }*/
+    }
 
     // Merkle Tree related functions
 
@@ -430,13 +430,13 @@ contract BattleshipStorage is IntBattleshipStruct {
     }
 
     function setEncryptedMerkleTreeByBattleIdAndPlayer(uint256 _battleId, address _player, string memory _merkleTree) external returns (bool) {
-        encryptedMerkleTree[_battleId][_player] = encryptMerkleTree(_merkleTree);
+        encryptedMerkleTree[_battleId][_player] = _merkleTree;
         return true;
     }
 
-    function encryptMerkleTree(string memory merkleTree) internal pure returns (string memory) {
-        bytes32 hash = keccak256(bytes(merkleTree));
-        return bytes32ToString(hash);
+    function encryptMerkleTree(bytes32 merkleTree) external pure returns (bytes32) {
+        bytes32 hash = keccak256(abi.encodePacked(merkleTree));
+        return hash;
     }
 
     // Utility function to convert bytes32 to string
