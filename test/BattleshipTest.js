@@ -9,7 +9,6 @@ contract("Battleship", accounts => {
     let battleshipInstance;
     let battleshipStorageInstance;
     let battleId;
-    let encryptedMerkleTree = "encryptedmerkletree";
     let playerOne = accounts[0];
     let playerTwo = accounts[1];
 
@@ -106,15 +105,17 @@ contract("Battleship", accounts => {
         );
 
         // Create Merkle tree leaves for player one and player two
-        playerOneLeaves = await battleshipStorageInstance.createMerkleTreeLeaves(playerOneShipLengths, playerOneAxisXs, playerOneAxisYs, playerOneDirections);
-        playerTwoLeaves = await battleshipStorageInstance.createMerkleTreeLeaves(playerTwoShipLengths, playerTwoAxisXs, playerTwoAxisYs, playerTwoDirections);
+        playerOneLeaves = await battleshipStorageInstance.getMerkleTreeLeafs(playerOne);
+        playerTwoLeaves = await battleshipStorageInstance.getMerkleTreeLeafs(playerTwo);
 
         // Calculate Merkle roots for both players
-        playerOneRootHash = await battleshipStorageInstance.calculateMerkleRoot(playerOneLeaves);
-        playerTwoRootHash = await battleshipStorageInstance.calculateMerkleRoot(playerTwoLeaves);
+        playerOneRootHash = await battleshipStorageInstance.
+            calculateMerkleRoot(playerOneLeaves);
+        playerTwoRootHash = await battleshipStorageInstance.
+            calculateMerkleRoot(playerTwoLeaves);
         let gamePhase = GamePhase.Placement;
 
-        console.log("playerOneLeaves:", playerOneLeaves.toString());
+        //console.log("playerOneLeaves:", playerOneLeaves.toString());
         //console.log("playerOneRootHash:", playerOneRootHash.toString());
 
         // Player One
@@ -138,14 +139,16 @@ contract("Battleship", accounts => {
         result = await battleshipInstance.joinLobby(playerOne, gamePhase, playerTwoRootHash, 
             { from: playerTwo, value: valueInWei });
         
-        battleId = result;
+        battleId = result.logs[0].args._battleId;
 
-        console.log("playerOneRootHash:", playerOneRootHash.toString());
-        console.log("playerTwoRootHash:", playerTwoRootHash.toString());
+        //console.log("playerOneRootHash:", playerOneRootHash.toString());
+        //console.log("playerTwoRootHash:", playerTwoRootHash.toString());
     
         // Check that the BattleStarted Event is emitted
         assert.equal(result.logs[0].event, "BattleStarted", 
             "Event must indicate that a battle has started");
+
+        
 
         //Check if there is currently a player in the lobby
         const lobby = await battleshipStorageInstance.getLobbyByAddress(playerOne);
@@ -162,66 +165,108 @@ contract("Battleship", accounts => {
        
     });
 
-    /*it("Should store and retrieve encrypted MerkleTree", async () => {
-    
-        // Store encrypted MerkleTree
-        await battleshipStorageInstance.setEncryptedMerkleTreeByBattleIdAndPlayer(
-            battleId, playerOne, playerOneLeaves);
-            
-        // Retrieve encrypted MerkleTree, return a bytes32 instead of a string
-        const retrievedEncryptedMerkleTree = await battleshipInstance.getPlayersEncryptedPositions(
-            battleId, { from: playerOne });
-
-        console.log("Encrypted Merkle Tree value:", retrievedEncryptedMerkleTree.toString());
-
-        assert.equal(retrievedEncryptedMerkleTree, encryptedMerkleTree,
-            "Retrieved encrypted MerkleTree does not match");
+    it("Should store and retrieve the Merkle tree root", async () => {
         
-    //try {} catch (error) {console.error("Transaction reverted with reason:", error.reason);}
-    });*/
+        //console.log("Battle ID:", battleId.toString());
+        // Retrieve the Merkle tree root, return a bytes32 instead of a string
+        const retrievedMerkleTreeRoot = await battleshipStorageInstance.
+            getMerkleTreeRootByBattleIdAndPlayer(battleId, playerOne);
 
-    it("should launch an attack", async () => {
-        // Write your test logic here
+        //console.log("Merkle Tree Root value:", retrievedMerkleTreeRoot);
+
+        assert.equal(retrievedMerkleTreeRoot, playerOneRootHash,
+            "Retrieved MerkleTreeRoot does not match");
     });
 
-    // Add more test cases as needed
-});
+    it("Should perform an attack and check for winner", async () => {
+        // Perform an attack by playerOne
+        let attackingPosition = positionsAttackedByPlayerTwo[0]; 
+        // Replace with the actual value of the leaf
+        let previousPositionLeaf = "0x00"; 
+        // Choose the corresponding proof
+        let previousPositionProof = "0x00"; 
 
-/*it("should join a lobby and start a battle", async () => {
-        let playerOneRootHash = "0xc509DBED5b5da5AB96b0b3d9159cE3aaa9BCB57c";
-        let playerTwoRootHash = "0x88e13dA7445bE1E90b5d0FA141bDc1D750c8182F";
-        let _gamePhase = GamePhase.Placement;
+        // Get the current state of the battle
+        const initialBattleState = await battleshipStorageInstance.getBattle(battleId);
+        
+        console.log("Battle Model:", initialBattleState.toString());
+        console.log("---------------------------------");
+        console.log("Battle ID:", battleId.toString());
+        console.log("Position leaf:", previousPositionLeaf.toString());
+        console.log("Position Proof:", previousPositionProof);
+        console.log("attacking position X:", attackingPosition.axisX.toString());
+        console.log("attacking position Y:", attackingPosition.axisY.toString());
 
-        return Battleship.deployed()
-        .then(battleshipInstance => {
-            battleship = instance;
-            
-            let valueInWei = msg.value;
-            return battleshipInstance.joinLobby(_gamePhase, playerOneRootHash, encryptedMerkleTree, { from: playerOne, value: valueInWei });
-        })
+        // Perform the attack
+        const attackResult = await battleshipInstance.attack(
+            battleId, previousPositionLeaf, previousPositionProof,
+            attackingPosition.axisX, attackingPosition.axisY, { from: playerTwo }
+        );
+    
+        // Get the updated state of the battle
+        const updatedBattleState = await battleshipStorageInstance.getBattle(battleId);
+
+        // Check that the AttackLaunched event is emitted
+        assert.equal(attackResult.logs[0].event, "ConfirmShotStatus", 
+            "Event containing more details about the last shot fired");
+
+        // Check that the AttackLaunched event is emitted
+        assert.equal(attackResult.logs[1].event, "AttackLaunched", 
+            "Event must indicate that an attack has been launched");
+    
+        // Perform your assertions here to verify the updated battle state
+        assert.equal(updatedBattleState.gamePhase, GamePhase.Shooting, 
+            "Indicate the current game phase");
+    
+        // Check if there is a winner
+        if (updatedBattleState.isCompleted) {
+            console.log("Winner address", updatedBattleState.winner);
+        }
+    }); 
+    
+    /*it("Should launch an attack from the first player", () => {
+        let previousPositionLeaf = 0;
+        let previousPositionProof = 0x00;
+        let attackingPositionX = 0;
+        let attackingPositionY = 0;
+
+        return battleshipInstance.attack(battleId, previousPositionLeaf, 
+            previousPositionProof, 0, 0, { from: playerTwo })
         .then(result => {
-            assert.equal(result.logs[0].event, "PlayerJoinedLobby", "Event must indicate that a player has joined the lobby");
-            assert.equal(result.logs[0].args._player, playerOne, "Creator account is not valid");
-            assert.equal(result.logs[0].args._gamePhase.valueOf(), gamePhase, "Game mode is not valid");
+            let confirmShotStatusEvent = result.logs[0];
+            let attackLaunchedEvent = result.logs[1];
 
-            let valueInWei = msg.value;
-            return battleshipInstance.joinLobby(gamePhase, playerTwoRootHash, encryptedMerkleTree, { from: playerTwo, value: valueInWei });
-        })
-        .then(result => {
-            battleId = result.logs[0].args._battleId;
-            let players = result.logs[0].args._players;
-            let gamePhase = result.logs[0].args._gamePhase.valueOf();
+            assert.equal(result.receipt.status, true, 
+                "Transaction must have a successful receipt status");
 
-            // Check that the BattleStarted Event is emitted
-            assert.equal(result.logs[0].event, "BattleStarted", "Event must indicate that a battle has started");
+            // Confirm Shot Status Event
+            assert.equal(confirmShotStatusEvent.event, "ConfirmShotStatus", 
+                "First log event must be of type Confirm Shot logs");
+            assert.equal(confirmShotStatusEvent.args._battleId.toNumber(), 
+                battleId.toNumber(), "Battle Id is not valid");
+            assert.equal(confirmShotStatusEvent.args._confirmingPlayer, 
+                playerTwo, "Confirming player is not valid");
+            assert.equal(confirmShotStatusEvent.args._opponent, playerOne, 
+                "Opponent Player is not valid");
+            assert.equal(confirmShotStatusEvent.args._position.toNumber(), 
+                0, "Previous Attacked Position is not valid");
+            assert.equal(confirmShotStatusEvent.args._shipDetected.state, ShipState.Intact, 
+                "Previous Ship state must be of type Intact because this is the first attack to be launched");
 
-            // Check if both players are included in the event log for the battle
-            assert.equal(players.includes(playerOne) && players.includes(playerTwo), true, "Battle must include both players");
-
-            // Check that the game mode is equal to the game mode entered by the initial player and also equal to the game mode entered by the current player
-            assert.equal(gamePhase == gamePhase, true, "Game mode must be equal to the starting game mode for the Match/Lobby");
+            // Attack Launched Event
+            assert.equal(attackLaunchedEvent.args._battleId.toNumber(), 
+                battleId.toNumber(), "Battle Id is not valid");
+            assert.equal(attackLaunchedEvent.args._launchingPlayer, 
+                playerTwo, "Attacking player is not valid");
+            assert.equal(attackLaunchedEvent.args._opponent, playerOne, 
+                "Opponent player is not valid");
+            assert.equal(attackLaunchedEvent.args._position.toNumber(), 
+                attackingPosition, "Attacking position is not valid");
         });
     });*/
+
+
+});
 
 /*contract("Battleship", accounts => {
 
@@ -289,35 +334,7 @@ contract("Battleship", accounts => {
         });
     });
 
-    it("Should launch an attack from the first player", () => {
-        let previousPositionLeaf = 0;
-        let previousPositionProof = 0x00;
-        let attackingPositionX = 1;
-        let attackingPositionY = 1;
-
-        return battleship.attack(battleId, previousPositionLeaf, previousPositionProof, 1, 1, { from: playerTwo })
-        .then(result => {
-            let confirmShotStatusEvent = result.logs[0];
-            let attackLaunchedEvent = result.logs[1];
-
-            assert.equal(result.receipt.status, true, "Transaction must have a successful receipt status");
-
-            // Confirm Shot Status Event
-            assert.equal(confirmShotStatusEvent.event, "ConfirmShotStatus", "First log event must be of type Confirm Shot logs");
-            assert.equal(confirmShotStatusEvent.args._battleId.toNumber(), battleId.toNumber(), "Battle Id is not valid");
-            assert.equal(confirmShotStatusEvent.args._confirmingPlayer, playerTwo, "Confirming player is not valid");
-            assert.equal(confirmShotStatusEvent.args._opponent, playerOne, "Opponent Player is not valid");
-            assert.equal(confirmShotStatusEvent.args._position.toNumber(), 0, "Previous Attacked Position is not valid");
-            assert.equal(confirmShotStatusEvent.args._shipDetected.state, ShipState.Intact, "Previous Ship state must be of type Intact because this is the first attack to be launched");
-
-            // Attack Launched Event
-            assert.equal(attackLaunchedEvent.args._battleId.toNumber(), battleId.toNumber(), "Battle Id is not valid");
-            assert.equal(attackLaunchedEvent.args._launchingPlayer, playerTwo, "Attacking player is not valid");
-            assert.equal(attackLaunchedEvent.args._opponent, playerOne, "Opponent player is not valid");
-            assert.equal(attackLaunchedEvent.args._position.toNumber(), attackingPosition, "Attacking position is not valid");
-        });
-    });
-
+   
     it("Should launch an attack from the second player", () => {
         // Implement this test case
     });

@@ -58,6 +58,7 @@ interface IntBattleshipStruct {
         uint256 createdAt; // Date Last created;
         uint256 updatedAt; // Date last updated
         ShipPosition[] shipPositions; // Array of ship positions
+        bytes32[] leafs;  // Array of Merkle tree leafs
     }
 
     struct GamePhaseDetail {

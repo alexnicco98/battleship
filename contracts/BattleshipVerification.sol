@@ -34,7 +34,7 @@ contract BattleshipVerification is IntBattleshipStruct, MerkleProof {
      * @param _proofs The Merkle Tree proofs of the player's moves.
      * @return isTreeValid Whether the Merkle Tree leafs are valid.
      */
-    function verifyLeafs(uint256 _battleId, uint8 _leafs, bytes[] memory _proofs) public returns (bool) {
+    function verifyLeafs(uint256 _battleId, bytes32 _leafs, bytes[] memory _proofs) public returns (bool) {
         BattleModel memory battle = dataStorage.getBattle(_battleId);
         address player = dataStorage.msgSender();
         bytes32 root = dataStorage.getMerkleTreeRootByBattleIdAndPlayer(_battleId, player);

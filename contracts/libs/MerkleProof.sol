@@ -11,7 +11,7 @@ contract MerkleProof {
     struct ProofVariables{
         bytes proof; 
         bytes32 rootHash;
-        uint8 previousLeafHash;
+        bytes32 previousLeafHash;
         uint256 index;
     }
 
@@ -59,22 +59,22 @@ contract MerkleProof {
         return h == proofVar.rootHash;
     }
 
-    function checkProofsOrdered(bytes[] memory proofs, bytes32 root, uint8 leafs) 
+    function checkProofsOrdered(bytes[] memory proofs, bytes32 root, bytes32 leafs) 
     public returns (bool){
       bool valid = true;
 
       //Loop through the Leafs
-      uint8 leaf;
+      //uint8 leaf;
 
       for(uint8 i = 0; i < 100; i+=5)
       {
         bytes memory proof = proofs[i];
-        leaf = getSlice(i+1, i+4, leafs);
+        //leaf = getSlice(i+1, i+4, leafs);
         uint8 index = i+1;
         ProofVariables memory proofVar = ProofVariables({
                 proof: proof,
                 rootHash: root,
-                previousLeafHash: leaf,
+                previousLeafHash: leafs,
                 index: index
         });
         bool result = checkProofOrdered(proofVar);
