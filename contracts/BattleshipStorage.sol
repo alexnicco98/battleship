@@ -39,8 +39,14 @@ contract BattleshipStorage is IntBattleshipStruct {
     mapping(uint256 => mapping(address => ShipPosition[])) correctPositionsHit;
     //mapping(uint256 => mapping(address => VerificationStatus)) private battleVerification;
     mapping(uint256 => mapping(address => bytes32)) private revealedLeafs;
+    mapping(address => bytes32[]) private proofs;
     mapping(address => LobbyModel) private lobbyMap;
     mapping(GamePhase => GamePhaseDetail) private gamePhaseMapping;
+
+    event LogMessage(string _message);
+    event LogsMessage(string _message1, string _message2, string _message3);
+    event shipsToString(string[] _ship);
+    event Print();
 
     modifier onlyOwner() {
         require(msg.sender == owner, "Only the owner can execute this transaction");
@@ -64,26 +70,26 @@ contract BattleshipStorage is IntBattleshipStruct {
         gamePhaseMapping[GamePhase.Placement] = GamePhaseDetail(minStakingAmount, GamePhase.Placement, minTimeRequiredForPlayerToRespond);
         gamePhaseMapping[GamePhase.Shooting] = GamePhaseDetail(minStakingAmount, GamePhase.Shooting, minTimeRequiredForPlayerToRespond);
         gamePhaseMapping[GamePhase.Gameover] = GamePhaseDetail(minStakingAmount, GamePhase.Gameover, minTimeRequiredForPlayerToRespond);
-        //initializeShipPositionMapping();
+        initializeShipPositionMapping();
         gridSquare = gridDimensionN * gridDimensionN;
     }
 
 
     function initializeShipPositionMapping() private {
         uint8 shipSizes;
-        uint8 axisX;
-        uint8 axisY;
+        //uint8 axisX;
+        //uint8 axisY;
         for (uint8 i = 0; i < numShips; i++) {
             shipSizes = i + 1;
             sumOfShipSizes += shipSizes;
-            (axisX, axisY) = (0,0);
+            /*(axisX, axisY) = (0,0);
             players[owner].shipPositions.push(ShipPosition({
                 shipLength: shipSizes,
                 direction: ShipDirection.None,
                 axisX: 0,
                 axisY: 0,
                 state: ShipState.Intact
-            }));
+            }));*/
         }
     }
 
@@ -122,14 +128,37 @@ contract BattleshipStorage is IntBattleshipStruct {
     }
 
     // Function to create Merkle tree leaf
-    function createMerkleTreeLeaf(uint8 shipLengths, uint8 axisXs,
-    uint8 axisYs, ShipDirection directions) 
-    public pure returns (bytes32) {
-        return keccak256(abi.encodePacked(
-            shipLengths, axisXs, axisYs, directions));
+    function createMerkleTreeLeaf(uint256 state) 
+    internal view returns (bytes32) {
+        // Generate a random salt
+        bytes32 salt = bytes32(uint256(keccak256(abi.encodePacked(block.timestamp))));
+
+        // Calculate the value of the leaf node
+        bytes32 value = bytes32(state) ^ salt;
+
+        // Calculate the value of the leaf node
+        value = keccak256(abi.encodePacked(value));
+
+        return value;
     }
 
-    function calculateMerkleRootInternal(bytes32[] memory nodes) internal pure returns (bytes32) {
+    // modify this function
+    function calculateMerkleRoot(bytes32[][] memory leafs)
+    external pure returns (bytes32) {
+        require(leafs.length > 0, "At least one leaf is required");
+
+        bytes32[] memory hashes = new bytes32[](leafs.length * leafs[0].length);
+        for (uint8 i = 0; i < leafs.length; i++) {
+            for (uint8 j = 0; j < leafs[i].length; j++) {
+                hashes[i * leafs[0].length + j] = leafs[i][j];
+            }
+        }
+
+        return calculateMerkleRootInternal(hashes);
+    }
+
+    function calculateMerkleRootInternal(bytes32[] memory nodes) 
+    internal pure returns (bytes32) {
         if (nodes.length == 1) {
             return nodes[0];
         }
@@ -139,25 +168,9 @@ contract BattleshipStorage is IntBattleshipStruct {
 
         bytes32[] memory parents = new bytes32[](n / 2);
         for (uint256 i = 0; i < n / 2; i++) {
-            parents[i] = sha256(abi.encodePacked(nodes[i * 2], nodes[i * 2 + 1]));
-        }
-
-        return calculateMerkleRootInternal(parents);
-    }
-
-    function calculateMerkleRoot(bytes32[] memory leaves) external pure returns (bytes32) {
-        require(leaves.length > 0, "At least one leaf is required");
-
-        if (leaves.length == 1) {
-            return leaves[0];
-        }
-
-        uint256 n = leaves.length;
-        require(n % 2 == 0, "Number of leaves should be even");
-
-        bytes32[] memory parents = new bytes32[](n / 2);
-        for (uint256 i = 0; i < n / 2; i++) {
-            parents[i] = sha256(abi.encodePacked(leaves[i * 2], leaves[i * 2 + 1]));
+            // Calculate the value of the XOR
+            bytes32 value = nodes[i * 2] ^ nodes[i * 2 + 1];
+            parents[i] = sha256(abi.encodePacked(value));
         }
 
         return calculateMerkleRootInternal(parents);
@@ -256,17 +269,17 @@ contract BattleshipStorage is IntBattleshipStruct {
 
     // Logic related function
 
-    function getShipPosition(address _address, uint8 index) external view returns (ShipPosition memory) {
-        return players[_address].shipPositions[index];
+    function getShipPosition(address _address, uint8 _index) external view returns (ShipPosition memory) {
+        return players[_address].shipPositions[_index];
     }
 
-    function getShipPositionByLeaf(address _player, bytes32 _leaf) public view returns (ShipPosition memory) {
+    function getShipPositionByLeaf(address _player, uint8 _axisX, uint8 _axisY) public view returns (ShipPosition memory) {
         PlayerModel storage player = players[_player];
         require(player.shipPositions.length == player.leafs.length, "Arrays length mismatch");
         
-        for (uint256 i = 0; i < player.leafs.length; i++) {
-            if (player.leafs[i] == _leaf) {
-                return player.shipPositions[i];
+        for (uint8 i = 0; i < player.shipPositions.length; i++) {
+            if (player.leafIndexX[i] == _axisX && player.leafIndexY[i] == _axisY) {
+                return player.shipPositions[player.leafIndexShipPosition[i]];
             }
         }
         
@@ -275,23 +288,78 @@ contract BattleshipStorage is IntBattleshipStruct {
         return defaultShipPosition;
     }
 
-    function getMerkleTreeLeaf(address _address, uint8 index) external view returns (bytes32) {
-        return players[_address].leafs[index];
+    function getMerkleTreeLeaf(address _address, uint8 _axisX, uint8 _axisY) external view returns (bytes32) {
+        return players[_address].leafs[_axisY][_axisX];
     }
 
-    function getMerkleTreeLeafs(address _address) external view returns (bytes32[] memory){
+    function getMerkleTreeLeafs(address _address) external view returns (bytes32[][] memory){
         return players[_address].leafs;
     }
 
+    function convertAndEmitShipPositions(ShipPosition[] memory shipPositions) public {
+        string[] memory shipPositionStrings = new string[](shipPositions.length);
+
+        for (uint256 i = 0; i < shipPositions.length; i++) {
+            ShipPosition memory position = shipPositions[i];
+            string memory positionString = string(
+                abi.encodePacked(
+                    "Ship ", 
+                    uintToString(position.shipLength), 
+                    " at (", 
+                    uintToString(position.axisX), 
+                    ",", 
+                    uintToString(position.axisY), 
+                    ") with direction ", 
+                    shipDirectionToString(position.direction)
+                )
+            );
+            shipPositionStrings[i] = positionString;
+        }
+
+        emit shipsToString(shipPositionStrings);
+    }
+
+     function uintToString(uint256 value) internal pure returns (string memory) {
+        if (value == 0) {
+            return "0";
+        }
+        uint256 temp = value;
+        uint256 digits;
+        while (temp != 0) {
+            digits++;
+            temp /= 10;
+        }
+        bytes memory buffer = new bytes(digits);
+        while (value != 0) {
+            digits -= 1;
+            buffer[digits] = bytes1(uint8(48 + uint8(value % 10)));
+            value /= 10;
+        }
+        return string(buffer);
+    }
+
+    function shipDirectionToString(ShipDirection direction) internal pure returns (string memory) {
+        if (direction == ShipDirection.Horizontal) {
+            return "Horizontal";
+        } else if (direction == ShipDirection.Vertical) {
+            return "Vertical";
+        } else {
+            return "Unknown";
+        }
+    } 
+
+    /** TODO: instead of save the all the leafs, probably I should
+        considering just calculate the root and every attack phase
+        return the position leaf position hit by the attack**/
     function setShipPositions(uint8[] memory shipLengths, uint8[] memory axisXs,
     uint8[] memory axisYs, ShipDirection[] memory directions, address player
-    ) public {
+    ) external {
         require(shipLengths.length == axisXs.length && axisXs.length == axisYs.length && 
             axisYs.length == directions.length, "Arrays length mismatch");
 
         PlayerModel storage playerModel = players[player];
 
-        for (uint256 i = 0; i < shipLengths.length; i++) {
+        for (uint8 i = 0; i < numShips; i++) {
             ShipPosition memory newShip = ShipPosition({
                 shipLength: shipLengths[i],
                 axisX: axisXs[i],
@@ -299,11 +367,98 @@ contract BattleshipStorage is IntBattleshipStruct {
                 direction: directions[i],
                 state: ShipState.Intact
             });
-
             playerModel.shipPositions.push(newShip);
-            playerModel.leafs.push(createMerkleTreeLeaf(shipLengths[i], axisXs[i], axisYs[i],  directions[i]));
+        }
+        //convertAndEmitShipPositions(playerModel.shipPositions);
+        transformShipPosition(playerModel);
+    }
+
+function transformShipPosition(PlayerModel storage player) internal {
+        bool[][] memory shipMatrix = new bool[][](gridDimensionN);
+
+        for (uint8 i = 0; i < gridDimensionN; i++) {
+            shipMatrix[i] = new bool[](gridDimensionN);
+            for (uint8 j = 0; j < gridDimensionN; j++) {
+                shipMatrix[i][j] = false;
+            }
+        }
+
+        for (uint8 i = 0; i < numShips; i++) {
+            ShipPosition memory ship = player.shipPositions[i];
+
+            uint8 shipLength = ship.shipLength;
+            uint8 axisX = ship.axisX;
+            uint8 axisY = ship.axisY;
+            ShipDirection direction = ship.direction;
+
+            if (direction == ShipDirection.Horizontal) {
+                if (axisX + shipLength > gridDimensionN) {
+                    revert("Ship would go out of bounds horizontally");
+                }
+                for (uint8 j = axisX; j < axisX + shipLength; j++) {
+                    emit LogsMessage("Placing ship at", uint8ToString(j), uint8ToString(axisY));
+                    shipMatrix[axisY][j] = true;
+                    updatePlayerLeafIndexes(player, j, axisY, i);
+                }
+            } else if (direction == ShipDirection.Vertical) {
+                if (axisY + shipLength > gridDimensionN) {
+                    revert("Ship would go out of bounds vertically");
+                }
+                for (uint8 j = axisY; j < axisY + shipLength; j++) {
+                    emit LogsMessage("Placing ship at", uint8ToString(axisX), uint8ToString(j));
+                    shipMatrix[j][axisX] = true;
+                    updatePlayerLeafIndexes(player, axisX, j, i);
+                }
+            }
+        }
+        
+        for (uint8 i = 0; i < gridDimensionN; i++) {
+            bytes32[] memory temporaryLeaf = new bytes32[](gridDimensionN);
+            for (uint8 j = 0; j < gridDimensionN; j++) {
+                temporaryLeaf[j] = shipMatrix[i][j] ? createMerkleTreeLeaf(1) : createMerkleTreeLeaf(0);
+            }
+            player.leafs.push(temporaryLeaf);
         }
     }
+
+    function updatePlayerLeafIndexes(
+        PlayerModel storage player,
+        uint8 leafIndexX,
+        uint8 leafIndexY,
+        uint8 leafIndexShipPosition
+    ) internal {
+        player.leafIndexX.push(leafIndexX);
+        player.leafIndexY.push(leafIndexY);
+        player.leafIndexShipPosition.push(leafIndexShipPosition);
+    }
+
+    function uint8ToString(uint8 _num) internal pure returns (string memory) {
+        bytes memory numBytes = new bytes(1);
+        numBytes[0] = bytes1(uint8(_num));
+
+        return string(abi.encodePacked(numBytes));
+    }
+
+
+    /* for (uint256 i = 0; i < gridDimensionN; i++) {
+            for (uint256 j = 0; j < gridDimensionN; j++) {
+                if( j == axisXs[shipIndexX] && i == axisYs[shipIndexX] ){
+                    ShipPosition memory newShip = ShipPosition({
+                        shipLength: shipLengths[shipIndexX],
+                        axisX: axisXs[shipIndexX],
+                        axisY: axisYs[shipIndexX],
+                        direction: directions[shipIndexX],
+                        state: ShipState.Intact
+                    });
+                    playerModel.shipPositions.push(newShip);
+                    shipIndexX++;
+                    state = 1;
+                }else{
+                    state = 0;
+                }
+                playerModel.leafs.push(createMerkleTreeLeaf(state));
+            }
+        } */
 
     function getSumOfShipSize() external view returns (uint8) {
         return sumOfShipSizes;
@@ -518,6 +673,15 @@ contract BattleshipStorage is IntBattleshipStruct {
 
     function setRevealedLeafsByBattleIdAndPlayer(uint256 _battleId, address _player, bytes32 _leafs) external returns (bool) {
         revealedLeafs[_battleId][_player] = _leafs;
+        return true;
+    }
+
+    function getProofByIndexAndPlayer(uint256 _index, address _player) external view returns (bytes32) {
+        return proofs[_player][_index];
+    }
+
+    function setProofByIndexAndPlayer(uint256 _index, address _player, bytes32 _proof) external returns (bool) {
+        proofs[_player][_index] = _proof;
         return true;
     }
 

@@ -39,9 +39,10 @@ contract Battleship is IntBattleshipStruct, MerkleProof {
     event WinnerDetected(uint _battleId, address _winnerAddress, address _opponentAddress);
     event ConfirmWinner(uint _battleId, address _winnerAddress, address _opponentAddress, uint _reward);
     event Transfer(address _to, uint _amount, uint _balance);
-    event StakeValue(uint value);
+    event StakeValue(uint _value);
     event Print();
-    event LogMessage(string message);
+    event LogMessage(string _message);
+    event shipsToString(string[] _ship);
 
     function emitStackValueFromGamePhase(GamePhase _gamePhase) public {
         //get the Game phase
@@ -136,77 +137,36 @@ contract Battleship is IntBattleshipStruct, MerkleProof {
         return battleId;
     }
 
-    /*function attack(uint _battleId, uint8 _previousPositionLeaf,
-    bytes memory _previousPositionProof, uint8 _attackingPositionX,
-    uint8 _attackingPositionY) public returns (bool) {
-        BattleModel memory battle = dataStorage.getBattle(_battleId);
-        GamePhaseDetail memory gamePhaseDetail = 
-            dataStorage.getGamePhaseDetails(battle.gamePhase);
-        
-        //address player = dataStorage.msgSender();
-        address player = msg.sender;
-        address opponent = battle.host == player ? battle.client : battle.host;
-        address nextTurn = dataStorage.getTurnByBattleId(_battleId);
-        uint lastPlayTime = dataStorage.getLastPlayTimeByBattleId(_battleId);
-
-        require(!battle.isCompleted, "A winner has been detected. Proceed to verify inputs");
-        require((block.timestamp - lastPlayTime) < gamePhaseDetail.maxTimeForPlayerToPlay, 
-            "Time to play is expired.");
-        require(nextTurn == player, "Wait till next turn");
-
-        emit Print();
-
-        // Get the status of the position hit
-        ShipPosition[] memory shipPosition = dataStorage.
-            getCorrectPositionsHitByBattleIdAndPlayer(_battleId, player);
-        ProofVariables memory proofVar;
-
-        proofVar = getProofVariables(_battleId, player, opponent, _previousPositionLeaf, 
-            _previousPositionProof, shipPosition);
-
-
-        require(merkleProof.checkProofOrdered(proofVar), 
-            "The proof and position combination indicates an invalid move");
-
-        updatePositionIndices(_battleId, player, _attackingPositionX, _attackingPositionY, opponent);
-
-        // Emit an event indicating that an attack has been launched
-        emit AttackLaunched(_battleId, player, opponent, _attackingPositionX, _attackingPositionY);
-
-        checkForWinner(_battleId, player, opponent, shipPosition);
-
-        return true;
-    }*/
-
     function attack(uint _battleId, bytes32 _previousPositionLeaf, 
-    bytes memory _previousPositionProof, uint8 _attackingPositionX, 
-    uint8 _attackingPositionY) public returns (bool){
+    bytes32 _currentPositionLeaf, uint8 _attackingPositionX, 
+    uint8 _attackingPositionY, uint8 _previousPositionIndex) public returns (bool){
         BattleModel memory battle = dataStorage.getBattle(_battleId);
         GamePhaseDetail memory gamePhaseDetail = dataStorage.getGamePhaseDetails(
             battle.gamePhase);
         address player = msg.sender;
         address opponent = battle.host == player ? battle.client : battle.host;
         address nextTurn = dataStorage.getTurnByBattleId(_battleId);
+        bytes32 proof;
 
         uint8[2] memory previousPositionIndex = dataStorage.
             getLastFiredPositionIndexByBattleIdAndPlayer(_battleId, opponent);
         bytes32 root = dataStorage.getMerkleTreeRootByBattleIdAndPlayer(_battleId, player);
 
-        // Calculate the index
-        uint256 index = (previousPositionIndex[1] * dataStorage.getGridDimensionN()) + 
-            previousPositionIndex[0] + 1;
-
         bool proofValidity;
-        ProofVariables memory proofVar = ProofVariables({
-                proof: _previousPositionProof,
-                rootHash: root,
-                previousLeafHash: _previousPositionLeaf,
-                index: index
-        });
-
-        if (previousPositionIndex[0] == 0) {
+        ProofVariables memory proofVar;
+        if (previousPositionIndex[0] == 0) { // change to _previousPositionIndex == -1 if needed
             proofValidity = true;
         } else {
+            emit Print();
+            proof = merkleProof.createProof(_currentPositionLeaf,
+            _previousPositionLeaf, _previousPositionIndex);
+            proofVar = ProofVariables({
+                proof: proof,
+                rootHash: root,
+                previousLeafHash: _previousPositionLeaf,
+                index: _previousPositionIndex
+            });
+            dataStorage.setProofByIndexAndPlayer(_previousPositionIndex, player, proof);
             proofValidity = merkleProof.checkProofOrdered(proofVar);
         }
 
@@ -230,13 +190,17 @@ contract Battleship is IntBattleshipStruct, MerkleProof {
             _attackingPositionX, _attackingPositionY);
 
         // Get the status of the position hit
-        ShipPosition memory shipPosition = dataStorage.getShipPositionByLeaf(player, _previousPositionLeaf);
+        /** TODO: change the function**/
+        ShipPosition memory shipPosition = dataStorage.getShipPositionByLeaf(player, 
+            _attackingPositionX, _attackingPositionY);
 
         // Emit an event containing more details about the last shot fired
-        emit ConfirmShotStatus(_battleId, player, opponent, previousPositionIndex, shipPosition);
+        emit ConfirmShotStatus(_battleId, player, opponent, previousPositionIndex, 
+            shipPosition);
 
         // Emit an event indicating that an attack has been launched
-        emit AttackLaunched(_battleId, player, opponent, _attackingPositionX, _attackingPositionY);
+        emit AttackLaunched(_battleId, player, opponent, _attackingPositionX, 
+            _attackingPositionY);
 
         // Check if we have a winner
         checkForWinner(_battleId, player, opponent, shipPosition);
@@ -244,38 +208,7 @@ contract Battleship is IntBattleshipStruct, MerkleProof {
         return true;
     }
 
-    function getProofVariables(uint _battleId, address player, address opponent, 
-    bytes32 _previousPositionLeaf, bytes memory _previousPositionProof, 
-    ShipPosition memory _shipPosition) internal returns (ProofVariables memory) {
-        uint8[2] memory previousPositionIndex = dataStorage.
-            getLastFiredPositionIndexByBattleIdAndPlayer(_battleId, opponent);
-        bytes32 root = dataStorage.getMerkleTreeRootByBattleIdAndPlayer(_battleId, player);
-        uint256 index = (previousPositionIndex[1] * dataStorage.getGridDimensionN()) + 
-            previousPositionIndex[0] + 1;
-
-        // Emit an event containing more details about the last shot fired
-        emit ConfirmShotStatus(_battleId, player, opponent, 
-            previousPositionIndex, _shipPosition);
-        return ProofVariables({
-            proof: _previousPositionProof,
-            rootHash: root,
-            previousLeafHash: _previousPositionLeaf,
-            index: index
-        });
-    }
-
-    // Update the position index to the list of fired locations, 
-    // update the turn and set the position index to the list of fired locations
-    function updatePositionIndices(uint _battleId, address player, uint8 _attackingPositionX,
-    uint8 _attackingPositionY, address opponent) internal {
-        dataStorage.setLastFiredPositionIndexByBattleIdAndPlayer(_battleId, player, 
-            _attackingPositionX, _attackingPositionY);
-        dataStorage.setTurnByBattleId(_battleId, opponent);
-        dataStorage.setPositionsAttackedByBattleIdAndPlayer(_battleId, player, 
-            _attackingPositionX, _attackingPositionY);
-    }
-    
-    function getPositionsAttacked(uint _battleId, address _player) 
+        function getPositionsAttacked(uint _battleId, address _player) 
     public view returns(uint8[] memory){
         return dataStorage.getPositionsAttackedByBattleIdAndPlayer(_battleId, _player);
     }
@@ -291,9 +224,11 @@ contract Battleship is IntBattleshipStruct, MerkleProof {
         //Get The total positions hit
         ShipPosition[] memory correctPositionsHit = dataStorage.
         getCorrectPositionsHitByBattleIdAndPlayer(_battleId, _playerAddress);
+
+        // DEBUG
+        //convertAndEmitShipPositions(correctPositionsHit);
         
-        if(correctPositionsHit.length == dataStorage.getSumOfShipSize())
-        {
+        if(correctPositionsHit.length == dataStorage.getSumOfShipSize()){
             // A winner has been found. Call  the game to a halt, 
             // and let the verification process begin.
             BattleModel memory battle = dataStorage.getBattle(_battleId);
@@ -365,6 +300,58 @@ contract Battleship is IntBattleshipStruct, MerkleProof {
         return result;
     }
 
+    function convertAndEmitShipPositions(ShipPosition[] memory shipPositions) public {
+        string[] memory shipPositionStrings = new string[](shipPositions.length);
+
+        for (uint256 i = 0; i < shipPositions.length; i++) {
+            ShipPosition memory position = shipPositions[i];
+            string memory positionString = string(
+                abi.encodePacked(
+                    "Ship ", 
+                    uintToString(position.shipLength), 
+                    " at (", 
+                    uintToString(position.axisX), 
+                    ",", 
+                    uintToString(position.axisY), 
+                    ") with direction ", 
+                    shipDirectionToString(position.direction)
+                )
+            );
+            shipPositionStrings[i] = positionString;
+        }
+
+        emit shipsToString(shipPositionStrings);
+    }
+
+    function uintToString(uint256 value) internal pure returns (string memory) {
+        if (value == 0) {
+            return "0";
+        }
+        uint256 temp = value;
+        uint256 digits;
+        while (temp != 0) {
+            digits++;
+            temp /= 10;
+        }
+        bytes memory buffer = new bytes(digits);
+        while (value != 0) {
+            digits -= 1;
+            buffer[digits] = bytes1(uint8(48 + uint8(value % 10)));
+            value /= 10;
+        }
+        return string(buffer);
+    }
+
+    function shipDirectionToString(ShipDirection direction) internal pure returns (string memory) {
+        if (direction == ShipDirection.Horizontal) {
+            return "Horizontal";
+        } else if (direction == ShipDirection.Vertical) {
+            return "Vertical";
+        } else {
+            return "Unknown";
+        }
+    } 
+
     // Helper function to convert address to string
     function addressToString(address addr) internal pure returns (string memory) {
         bytes32 value = bytes32(uint256(uint160(addr)));
@@ -381,6 +368,79 @@ contract Battleship is IntBattleshipStruct, MerkleProof {
         }
         return string(str);
     }
+
+    /*function attack(uint _battleId, uint8 _previousPositionLeaf,
+    bytes memory _previousPositionProof, uint8 _attackingPositionX,
+    uint8 _attackingPositionY) public returns (bool) {
+        BattleModel memory battle = dataStorage.getBattle(_battleId);
+        GamePhaseDetail memory gamePhaseDetail = 
+            dataStorage.getGamePhaseDetails(battle.gamePhase);
+        
+        //address player = dataStorage.msgSender();
+        address player = msg.sender;
+        address opponent = battle.host == player ? battle.client : battle.host;
+        address nextTurn = dataStorage.getTurnByBattleId(_battleId);
+        uint lastPlayTime = dataStorage.getLastPlayTimeByBattleId(_battleId);
+
+        require(!battle.isCompleted, "A winner has been detected. Proceed to verify inputs");
+        require((block.timestamp - lastPlayTime) < gamePhaseDetail.maxTimeForPlayerToPlay, 
+            "Time to play is expired.");
+        require(nextTurn == player, "Wait till next turn");
+
+        emit Print();
+
+        // Get the status of the position hit
+        ShipPosition[] memory shipPosition = dataStorage.
+            getCorrectPositionsHitByBattleIdAndPlayer(_battleId, player);
+        ProofVariables memory proofVar;
+
+        proofVar = getProofVariables(_battleId, player, opponent, _previousPositionLeaf, 
+            _previousPositionProof, shipPosition);
+
+
+        require(merkleProof.checkProofOrdered(proofVar), 
+            "The proof and position combination indicates an invalid move");
+
+        updatePositionIndices(_battleId, player, _attackingPositionX, _attackingPositionY, opponent);
+
+        // Emit an event indicating that an attack has been launched
+        emit AttackLaunched(_battleId, player, opponent, _attackingPositionX, _attackingPositionY);
+
+        checkForWinner(_battleId, player, opponent, shipPosition);
+
+        return true;
+    }
+
+    function getProofVariables(uint _battleId, address player, address opponent, 
+    bytes32 _previousPositionLeaf, bytes memory _previousPositionProof, 
+    ShipPosition memory _shipPosition) internal returns (ProofVariables memory) {
+        uint8[2] memory previousPositionIndex = dataStorage.
+            getLastFiredPositionIndexByBattleIdAndPlayer(_battleId, opponent);
+        bytes32 root = dataStorage.getMerkleTreeRootByBattleIdAndPlayer(_battleId, player);
+        uint256 index = (previousPositionIndex[1] * dataStorage.getGridDimensionN()) + 
+            previousPositionIndex[0] + 1;
+
+        // Emit an event containing more details about the last shot fired
+        emit ConfirmShotStatus(_battleId, player, opponent, 
+            previousPositionIndex, _shipPosition);
+        return ProofVariables({
+            proof: _previousPositionProof,
+            rootHash: root,
+            previousLeafHash: _previousPositionLeaf,
+            index: index
+        });
+    }
+
+    // Update the position index to the list of fired locations, 
+    // update the turn and set the position index to the list of fired locations
+    function updatePositionIndices(uint _battleId, address player, uint8 _attackingPositionX,
+    uint8 _attackingPositionY, address opponent) internal {
+        dataStorage.setLastFiredPositionIndexByBattleIdAndPlayer(_battleId, player, 
+            _attackingPositionX, _attackingPositionY);
+        dataStorage.setTurnByBattleId(_battleId, opponent);
+        dataStorage.setPositionsAttackedByBattleIdAndPlayer(_battleId, player, 
+            _attackingPositionX, _attackingPositionY);
+    }*/
     
     /*function getPlayersEncryptedPositions(uint _battleId) public view returns (string memory){
         //Get the ship positions for the battle

@@ -32,7 +32,7 @@ interface IntBattleshipStorage is IntBattleshipStruct {
     //    external returns (bool);
     
     // Merkle Tree
-    function encryptMerkleTree(bytes32 merkleTree) external pure returns (bytes32);
+    function encryptMerkleTree(bytes32 _merkleTree) external pure returns (bytes32);
     
     //function getRevealedPositionValueByBattleIdAndPlayer(uint256 _battleId, 
     //    address _revealingPlayer, uint8 _position) external view returns (bytes32);
@@ -80,20 +80,26 @@ interface IntBattleshipStorage is IntBattleshipStruct {
     function getTransactionOfficer() external view returns (address);
     //function setTransactionOfficer(address payable _transactionOfficer) external returns (bool);
     
-    // Revealed leafs related functions
+    // Revealed leafs and proofs related functions
 
     function getRevealedLeafsByBattleIdAndPlayer(uint256 _battleId, address _playerAddress) 
         external view returns (bytes32);
     function setRevealedLeafsByBattleIdAndPlayer(uint256 _battleId, address _playerAddress, 
         bytes32 _revealedLeafs) external returns (bool);
+    function getProofByIndexAndPlayer(uint256 _index, address _player) 
+        external view returns (bytes32);
+    function setProofByIndexAndPlayer(uint256 _index, address _player, bytes32 _proof) 
+        external returns (bool);
+    //function getLeafByIndexAndPlayer(uint256 _indexX, uint256 _indexY, address _player) external view returns (bytes32);
+    //function setLeafByIndexAndPlayer(uint256 _indexX, uint256 _indexY, address _player, bytes32 _leaf) external returns (bool);
 
     function getSumOfShipSize() external view returns (uint8);
     function getGridDimensionN() external view returns (uint8);
-    function setGridDimensionN(uint8 newValue) external;
+    function setGridDimensionN(uint8 _newValue) external;
 
-    function msgSender() external view returns(address sender);
+    function msgSender() external view returns(address _sender);
 
-    function getShipLenghtFromIndex(uint8 index) external view returns (uint8);
+    function getShipLenghtFromIndex(uint8 _index) external view returns (uint8);
 
     /*function getShipInxesFromShipLength(uint8 shipLenght) 
     external view returns (uint8[] memory);*/
@@ -102,31 +108,29 @@ interface IntBattleshipStorage is IntBattleshipStruct {
     //    external view returns (string memory);
 
     // get a single ship position inside the struct PlayerModel
-    function getShipPosition(uint8 positionKey) 
+    function getShipPosition(uint8 _positionKey) 
         external view returns (ShipPosition memory);
 
     // get a single ship position knowing the leaf
-    function getShipPositionByLeaf(address _player, bytes32 _leaf) 
+    function getShipPositionByLeaf(address _player,  uint8 _axisX, uint8 _axisY) 
         external view returns (ShipPosition memory);
 
     // get a single Merkle Tree leaf inside the struct PlayerModel
-    function getMerkleTreeLeaf(address _address, uint8 index) 
+    function getMerkleTreeLeaf(address _address, uint8 _axisX, uint8 _axisY) 
     external view returns (bytes32);
 
     // get all Merkle Tree leaf inside the struct PlayerModel
-    function getMerkleTreeLeafs(address _address) external view returns (bytes32[] memory);
+    function getMerkleTreeLeafs(address _address) external view returns (bytes32[][] memory);
 
     // set all the ship
-    function setShipPositions(uint8[] memory shipLengths, uint8[] memory axisXs,
-        uint8[] memory axisYs, ShipDirection[] memory directions, address player) external;
+    function setShipPositions(uint8[] memory _shipLengths, uint8[] memory _axisXs,
+        uint8[] memory _axisYs, ShipDirection[] memory _directions, address _player) external;
 
     // create a Merkle tree leaves from the ship positions
-    function createMerkleTreeLeaf(uint8 shipLengths, uint8 axisXs,
-        uint8 axisYs, ShipDirection directions) 
-        external pure returns (bytes32[] memory);
+    //function createMerkleTreeLeaf(uint256 _state) external view returns (bytes32);
 
     // create a Merkle root from the Merkle tree leaves
-    function calculateMerkleRoot(bytes32[] memory leaves) external pure returns (bytes32);
+    function calculateMerkleRoot(bytes32[][] memory _leaves) external pure returns (bytes32);
 
     /*function checkProofOrdered(bytes memory proof, bytes32 root, 
     string memory hash, uint256 index) external returns (bool);

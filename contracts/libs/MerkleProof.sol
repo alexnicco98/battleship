@@ -9,13 +9,43 @@ pragma abicoder v2;
 contract MerkleProof {
 
     struct ProofVariables{
-        bytes proof; 
+        bytes32 proof; 
         bytes32 rootHash;
         bytes32 previousLeafHash;
         uint256 index;
     }
 
     event CorrectProofEvent(bool returnValue);
+
+    function createProof(bytes32 leafHash, bytes32 previousLeafHash, uint256 index) 
+    public pure returns (bytes32) {
+        bytes32[] memory proof;
+
+        // Initialize the variables.
+        bytes32 h = leafHash;
+        bool isHashed = false;
+
+        // Iterate over the proof, calculating the hash of each element.
+        for (uint256 i = 0; i <= index; i++) {
+            if (!isHashed) {
+                if (i % 2 == 0) {
+                    proof[i] = keccak256(abi.encodePacked(h, previousLeafHash));
+                } else {
+                    proof[i] = keccak256(abi.encodePacked(previousLeafHash, h));
+                }
+                isHashed = true;
+            } else {
+                if (i % 2 == 0) {
+                    proof[i] = keccak256(abi.encodePacked(h, proof[i - 1]));
+                } else {
+                    proof[i] = keccak256(abi.encodePacked(proof[i - 1], h));
+                }
+            }
+        }
+
+        return proof[index];
+    }
+
 
     function checkProofOrdered(ProofVariables memory proofVar) public returns (bool) {
         // use the index to determine the node ordering
@@ -25,7 +55,7 @@ contract MerkleProof {
         bytes32 h;
         uint256 remaining;
         bool isHashed = false;
-        bytes memory localProof = proofVar.proof;
+        bytes32 localProof = proofVar.proof;
 
         for (uint256 j = 32; j <= proofVar.proof.length; j += 32) {
             assembly ("memory-safe") {
@@ -59,7 +89,7 @@ contract MerkleProof {
         return h == proofVar.rootHash;
     }
 
-    function checkProofsOrdered(bytes[] memory proofs, bytes32 root, bytes32 leafs) 
+    function checkProofsOrdered(bytes32[] memory proofs, bytes32 root, bytes32 leafs) 
     public returns (bool){
       bool valid = true;
 
@@ -68,7 +98,7 @@ contract MerkleProof {
 
       for(uint8 i = 0; i < 100; i+=5)
       {
-        bytes memory proof = proofs[i];
+        bytes32 proof = proofs[i];
         //leaf = getSlice(i+1, i+4, leafs);
         uint8 index = i+1;
         ProofVariables memory proofVar = ProofVariables({
