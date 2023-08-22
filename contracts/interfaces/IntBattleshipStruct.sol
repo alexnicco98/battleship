@@ -50,7 +50,8 @@ interface IntBattleshipStruct {
         uint256 matchesPlayed; // Total number of matches played
         uint256 wins; // Total number of wins
         uint256 losses; // Total number of losses
-        bool isVerified; // Indicates whether or not the account of the captain has been set up
+        bool isVerified; // Indicates whether or not the account of 
+                         // the captain has been set up
         uint256 numberOfGamesHosted; // Total number Of games hosted;
         uint256 numberOfGamesJoined; // Total number of Games Joined;
         uint256 totalStaking; // The total amount of money that has been staked
@@ -62,7 +63,7 @@ interface IntBattleshipStruct {
         uint8[] leafIndexY; // for each shipPosition I save the leaf index Y
         uint8[] leafIndexShipPosition; // correspond to the shipPosition relative
                                          // to the leafIndexX[i] and leafIndexY[i]
-        bytes32[][] leafs;  // Array of Merkle tree leafs
+        bytes32[][] leaves;  // Array of Merkle tree leaves
     }
 
     struct GamePhaseDetail {
@@ -79,7 +80,7 @@ interface IntBattleshipStruct {
     }
 
     struct BattleVerificationModel {
-        uint256 battleId;
+        uint8 battleId;
         bytes32 previousPositionLeaf;
         bytes previousPositionProof;
         uint8 attackingPosition;

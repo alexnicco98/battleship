@@ -10,14 +10,97 @@ contract MerkleProof {
 
     struct ProofVariables{
         bytes32 proof; 
-        bytes32 rootHash;
-        bytes32 previousLeafHash;
-        uint256 index;
+        bytes32 root;
+        bytes32 leaf;
+        uint8[2] index;
     }
 
     event CorrectProofEvent(bool returnValue);
 
-    function createProof(bytes32 leafHash, bytes32 previousLeafHash, uint256 index) 
+    // from StorJ -- https://github.com/nginnever/storj-audit-verifier/blob/master/contracts/MerkleVerifyv3.sol
+    // check the function to work with the other code
+    /*function verifyLeafWithMerkleRoot(bytes32 leaf, bytes32[] memory proof, bytes32 merkleRoot) 
+    public pure returns (bool) {
+        bytes32 currentHash = leaf;
+
+        
+        for (uint256 i = 0; i < proof.length; i++) {
+            if (i % 2 == 0) {
+                currentHash = keccak256(abi.encodePacked(currentHash, proof[i]));
+            } else {
+                currentHash = keccak256(abi.encodePacked(proof[i], currentHash));
+            }
+        }
+        
+        return currentHash == merkleRoot;
+    }*/
+    
+    function checkProofOrdered(ProofVariables memory _proofVar) 
+    public pure returns (bool) {
+        bytes32 el;
+        bytes32 h;
+        uint256 remaining;
+        bool isHashed = false;
+
+        bytes memory proofBytes = abi.encodePacked(_proofVar.proof);
+
+        for (uint256 j = 32; j <= proofBytes.length; j += 32) {
+            assembly {
+                el := mload(add(proofBytes, j))
+            }
+
+            // calculate remaining elements in proof
+            remaining = (proofBytes.length - j + 32) / 32;
+
+            while (remaining > 0 && _proofVar.index[1] % 2 == 1 && 
+            _proofVar.index[0] > 2 ** remaining) {
+                _proofVar.index[0] = uint8(_proofVar.index[0]) / 2 + 1;
+            }
+
+            if (!isHashed) {
+                if (_proofVar.index[1] % 2 == 0) {
+                    h = keccak256(abi.encodePacked(el, _proofVar.leaf));
+                    _proofVar.index[1] = uint8(_proofVar.index[1]) / 2;
+                } else {
+                    h = keccak256(abi.encodePacked(_proofVar.leaf, el));
+                    _proofVar.index[1] = uint8(_proofVar.index[1]) / 2 + 1;
+                }
+                isHashed = true;
+            } else {
+                if (_proofVar.index[1] % 2 == 0) {
+                    h = keccak256(abi.encodePacked(el, h));
+                    _proofVar.index[1] = uint8(_proofVar.index[1]) / 2;
+                } else {
+                    h = keccak256(abi.encodePacked(h, el));
+                    _proofVar.index[1] = uint8(_proofVar.index[1]) / 2 + 1;
+                }
+            }
+
+            // Check if the calculated hash matches the hash at the corresponding 
+            // index in the proof
+            if (h != _proofVar.leaf) {
+                return false;
+            }
+        }
+
+        return h == _proofVar.root;
+    }
+
+    function pow(uint256 _base, uint256 _exponent) internal pure returns (uint256) {
+        if (_exponent == 0) {
+            return 1;
+        }
+
+        uint256 result = _base;
+        for (uint256 i = 1; i < _exponent; i++) {
+            result = result * _base;
+        }
+
+        return result;
+    }
+  
+    
+    /*function createProof(bytes32 leafHash, bytes32 previousLeafHash, uint256 index) 
     public pure returns (bytes32) {
         bytes32[] memory proof;
 
@@ -25,7 +108,7 @@ contract MerkleProof {
         bytes32 h = leafHash;
         bool isHashed = false;
 
-        // Iterate over the proof, calculating the hash of each element.
+        // Iterate over the proof, calculating the leaf of each element.
         for (uint256 i = 0; i <= index; i++) {
             if (!isHashed) {
                 if (i % 2 == 0) {
@@ -47,10 +130,7 @@ contract MerkleProof {
     }
 
 
-    function checkProofOrdered(ProofVariables memory proofVar) public returns (bool) {
-        // use the index to determine the node ordering
-        // index ranges 1 to n
-
+   function checkProofOrdered(ProofVariables memory proofVar) public returns (bool) {
         bytes32 el;
         bytes32 h;
         uint256 remaining;
@@ -58,7 +138,7 @@ contract MerkleProof {
         bytes32 localProof = proofVar.proof;
 
         for (uint256 j = 32; j <= proofVar.proof.length; j += 32) {
-            assembly ("memory-safe") {
+            assembly {
                 el := mload(add(localProof, j))
             }
 
@@ -66,30 +146,60 @@ contract MerkleProof {
             remaining = (proofVar.proof.length - j + 32) / 32;
 
             if (!isHashed) {
-                if (proofVar.index % 2 == 0) {
+                if (proofVar.index[0] % 2 == 0) {
                     h = keccak256(abi.encodePacked(el, proofVar.previousLeafHash));
-                    proofVar.index = proofVar.index / 2;
+                    proofVar.index[0] = proofVar.index[0] / 2;
                 } else {
                     h = keccak256(abi.encodePacked(proofVar.previousLeafHash, el));
-                    proofVar.index = uint(proofVar.index) / 2 + 1;
+                    proofVar.index[0] = uint8(proofVar.index[0]) / 2 + 1;
                 }
                 isHashed = true;
             } else {
-                if (proofVar.index % 2 == 0) {
+                if (proofVar.index[0] % 2 == 0) {
                     h = keccak256(abi.encodePacked(el, h));
-                    proofVar.index = proofVar.index / 2;
+                    proofVar.index[0] = proofVar.index[0] / 2;
                 } else {
                     h = keccak256(abi.encodePacked(h, el));
-                    proofVar.index = uint(proofVar.index) / 2 + 1;
+                    proofVar.index[0] = uint8(proofVar.index[0]) / 2 + 1;
                 }
             }
-
         }
+        
+        for (uint256 j = 32; j <= proofVar.proof.length; j += 32) {
+            assembly {
+                el := mload(add(localProof, j))
+            }
+
+            // calculate remaining elements in proof
+            remaining = (proofVar.proof.length - j + 32) / 32;
+
+            if (!isHashed) {
+                if (proofVar.index[1] % 2 == 0) {
+                    h = keccak256(abi.encodePacked(el, proofVar.previousLeafHash));
+                    proofVar.index[1] = proofVar.index[1] / 2;
+                } else {
+                    h = keccak256(abi.encodePacked(proofVar.previousLeafHash, el));
+                    proofVar.index[1] = uint8(proofVar.index[1]) / 2 + 1;
+                }
+                isHashed = true;
+            } else {
+                if (proofVar.index[1] % 2 == 0) {
+                    h = keccak256(abi.encodePacked(el, h));
+                    proofVar.index[1] = proofVar.index[1] / 2;
+                } else {
+                    h = keccak256(abi.encodePacked(h, el));
+                    proofVar.index[1] = uint8(proofVar.index[1]) / 2 + 1;
+                }
+            }
+        }
+
         emit CorrectProofEvent(h == proofVar.rootHash);
         return h == proofVar.rootHash;
-    }
+    }*/
 
-    function checkProofsOrdered(bytes32[] memory proofs, bytes32 root, bytes32 leafs) 
+
+
+    /*function checkProofsOrdered(bytes32[] memory proofs, bytes32 root, bytes32 leafs) 
     public returns (bool){
       bool valid = true;
 
@@ -114,7 +224,7 @@ contract MerkleProof {
         }
       }
       return valid;
-  }
+  }*/
 
 
     function checkProof(bytes32[] memory proof, bytes32 root, bytes32 leaf) 
@@ -193,58 +303,8 @@ contract MerkleProof {
         }
         
         return computedHash == root;
-    }
+    }*/
 
-    // from StorJ -- https://github.com/nginnever/storj-audit-verifier/blob/master/contracts/MerkleVerifyv3.sol
-    // check the function to work with the other code
-    function checkProofOrdered(bytes memory proof, bytes32 root, 
-    string memory hash, uint256 index) public pure returns (bool) {
-        // use the index to determine the node ordering
-        // index ranges 1 to n
-
-        bytes32 el;
-        bytes32 h;
-        uint256 remaining;
-        bool isHashed = false;
-
-        for (uint256 j = 32; j <= proof.length; j += 32) {
-            assembly {
-                el := mload(add(proof, j))
-            }
-
-            // calculate remaining elements in proof
-            remaining = (proof.length - j + 32) / 32;
-
-            // we don't assume that the tree is padded to a power of 2
-            // if the index is odd then the proof will start with a hash at a higher
-            // layer, so we have to adjust the index to be the index at that layer
-            while (remaining > 0 && index % 2 == 1 && index > 2 ** remaining) {
-                index = uint(index) / 2 + 1;
-            }
-
-            if (!isHashed) {
-                if (index % 2 == 0) {
-                    h = keccak256(abi.encodePacked(el, bytes(hash)));
-                    index = index / 2;
-                } else {
-                    h = keccak256(abi.encodePacked(bytes(hash), el));
-                    index = uint(index) / 2 + 1;
-                }
-                isHashed = true;
-            } else {
-                if (index % 2 == 0) {
-                    h = keccak256(abi.encodePacked(el, h));
-                    index = index / 2;
-                } else {
-                    h = keccak256(abi.encodePacked(h, el));
-                    index = uint(index) / 2 + 1;
-                }
-            }
-        }
-
-        return h == root;
-    }
-    */
 
 
 

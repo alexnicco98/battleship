@@ -25,21 +25,23 @@ contract BattleshipStorage is IntBattleshipStruct {
     uint8 public sumOfShipSizes = 0;
     uint8 private gridSquare;
 
+
     address private battleShipContractAddress;
     //IntBattleshipLogic private gameLogic;
 
     mapping(uint256 => BattleModel) private battles;
     mapping(address => PlayerModel) private players;
-    //mapping(uint256 => mapping(address => mapping(uint256 => bytes32))) private revealedPositions;
-    mapping(uint256 => mapping(address => uint8[])) private positionsAttacked;
+    //mapping(address => bytes32[]) private proofs;
+
+    //mapping(uint256 => mapping(address => mapping(uint256 => bytes32))) 
+    //private revealedPositions;
+    mapping(uint256 => mapping(address => uint8[2][])) private positionsAttacked;
     mapping(uint256 => mapping(address => bytes32)) private merkleTreeRoot;
-    mapping(uint256 => mapping(address => uint8[2])) private lastFiredPositionIndex;
     mapping(uint256 => address) private turn;
     mapping(uint256 => uint256) private lastPlayTime;
     mapping(uint256 => mapping(address => ShipPosition[])) correctPositionsHit;
     //mapping(uint256 => mapping(address => VerificationStatus)) private battleVerification;
-    mapping(uint256 => mapping(address => bytes32)) private revealedLeafs;
-    mapping(address => bytes32[]) private proofs;
+    mapping(uint256 => mapping(address => bytes32)) private revealedLeaves;
     mapping(address => LobbyModel) private lobbyMap;
     mapping(GamePhase => GamePhaseDetail) private gamePhaseMapping;
 
@@ -62,14 +64,16 @@ contract BattleshipStorage is IntBattleshipStruct {
 
     constructor(bool _isTest) {
         gameId = 0;
-        // TODO: change to be the number of cels inside the matrix
         maxNumberOfMissiles = gridDimensionN * gridDimensionN;
         isTest = _isTest;
         //gameLogic = IntBattleshipLogic(_gameLogic);
 
-        gamePhaseMapping[GamePhase.Placement] = GamePhaseDetail(minStakingAmount, GamePhase.Placement, minTimeRequiredForPlayerToRespond);
-        gamePhaseMapping[GamePhase.Shooting] = GamePhaseDetail(minStakingAmount, GamePhase.Shooting, minTimeRequiredForPlayerToRespond);
-        gamePhaseMapping[GamePhase.Gameover] = GamePhaseDetail(minStakingAmount, GamePhase.Gameover, minTimeRequiredForPlayerToRespond);
+        gamePhaseMapping[GamePhase.Placement] = GamePhaseDetail(minStakingAmount, 
+            GamePhase.Placement, minTimeRequiredForPlayerToRespond);
+        gamePhaseMapping[GamePhase.Shooting] = GamePhaseDetail(minStakingAmount, 
+            GamePhase.Shooting, minTimeRequiredForPlayerToRespond);
+        gamePhaseMapping[GamePhase.Gameover] = GamePhaseDetail(minStakingAmount, 
+            GamePhase.Gameover, minTimeRequiredForPlayerToRespond);
         initializeShipPositionMapping();
         gridSquare = gridDimensionN * gridDimensionN;
     }
@@ -103,7 +107,8 @@ contract BattleshipStorage is IntBattleshipStruct {
         }
     }
 
-    function generateRandomAxis(uint8 shipLength, ShipDirection direction) private view returns (uint8 axisX, uint8 axisY) {
+    function generateRandomAxis(uint8 shipLength, ShipDirection direction) 
+    private view returns (uint8 axisX, uint8 axisY) {
         uint8 gridSize = gridDimensionN; // Change this to your grid size
         require(gridSize > 0, "Grid size must be greater than 0");
 
@@ -128,13 +133,15 @@ contract BattleshipStorage is IntBattleshipStruct {
     }
 
     // Function to create Merkle tree leaf
-    function createMerkleTreeLeaf(uint256 state) 
+    function createMerkleTreeLeaf(uint256 _state, address _player) 
     internal view returns (bytes32) {
         // Generate a random salt
         bytes32 salt = bytes32(uint256(keccak256(abi.encodePacked(block.timestamp))));
 
         // Calculate the value of the leaf node
-        bytes32 value = bytes32(state) ^ salt;
+        // I'm adding also the addrress because otherwise,
+        // the leaf are equals for both players
+        bytes32 value = bytes32(_state) ^ salt ^ bytes32(uint256(uint160(_player)));
 
         // Calculate the value of the leaf node
         value = keccak256(abi.encodePacked(value));
@@ -176,9 +183,62 @@ contract BattleshipStorage is IntBattleshipStruct {
         return calculateMerkleRootInternal(parents);
     }
 
+    // Function to generate Merkle Proof for single leaf
+    function generateSingleLeafProof(bytes32[][] memory _leaves, bytes32 _leaf, bytes32 _root, 
+    uint8 _leafIndexY, uint8 _leafIndexX) external pure returns (bytes32) {
+        require(_leafIndexY < _leaves.length, "Invalid leaf index Y");
+        require(_leafIndexX < _leaves[_leafIndexY].length, "Invalid leaf index X");
+        
+        bytes32[] memory leafHashes = new bytes32[](_leaves.length * _leaves[0].length);
+        for (uint8 i = 0; i < _leaves.length; i++) {
+            for (uint8 j = 0; j < _leaves[i].length; j++) {
+                leafHashes[i * _leaves[0].length + j] = _leaves[i][j];
+            }
+        }
+        
+        bytes32 calculatedRoot = calculateMerkleRootInternal(leafHashes);
+        require(_root == calculatedRoot, "Provided root does not match calculated root");
+
+        // Calculate the sibling indexes
+        uint8 siblingIndexY = _leafIndexY;
+        uint8 siblingIndexX;
+
+        if (_leafIndexX % 2 == 0) {
+            siblingIndexX = _leafIndexX + 1;
+        } else {
+            siblingIndexX = _leafIndexX - 1;
+        }
+
+        // Check for valid sibling index
+        require(siblingIndexX < _leaves[_leafIndexY].length, "Invalid sibling index X");
+
+        // Calculate the sibling value
+        bytes32 siblingValue = _leaves[siblingIndexY][siblingIndexX];
+        
+        // Calculate the parent hash
+        _root = keccak256(abi.encodePacked(_leaf, siblingValue));
+
+        
+        return _root;
+    }
+
+    // Function to verify adversary's single leaf integrity
+    function verifyAdversaryLeaf(uint256 _battleId, address _adversary, bytes32 _leaf, 
+    bytes32 _root) external view returns (bool) {
+        // Concatenate the adversary's leaf and their claimed root hash
+        bytes memory concatenatedProof = abi.encodePacked(_leaf, _root);
+        
+        // Hash the concatenated proof
+        bytes32 calculatedHash = keccak256(concatenatedProof);
+        
+        // Compare the calculated hash with the actual Merkle root of the adversary
+        return calculatedHash == getMerkleTreeRootByBattleIdAndPlayer(_battleId, _adversary);
+    }
+
     // check if the ship position is valid or is overlapping w.r.t. another ship
-    function areShipsNonOverlapping(uint8[] memory startXPositions, uint8[] memory startYPositions,
-    uint8[] memory shipLengths, ShipDirection[] memory directions) private view returns (bool) { 
+    function areShipsNonOverlapping(uint8[] memory startXPositions, 
+    uint8[] memory startYPositions, uint8[] memory shipLengths, 
+    ShipDirection[] memory directions) private view returns (bool) { 
         uint8 nShips = uint8(shipLengths.length);
         uint8[] memory shipLen; 
         uint8[] memory staPosX; 
@@ -214,11 +274,13 @@ contract BattleshipStorage is IntBattleshipStruct {
         return true;
     }
 
-    function getShipPositionX(uint8 startX, uint8 j, ShipDirection direction) private pure returns (uint8) {
+    function getShipPositionX(uint8 startX, uint8 j, ShipDirection direction) 
+    private pure returns (uint8) {
         return direction == ShipDirection.Horizontal ? startX + j : startX;
     }
 
-    function getShipPositionY(uint8 startY, uint8 j, ShipDirection direction) private pure returns (uint8) {
+    function getShipPositionY(uint8 startY, uint8 j, ShipDirection direction) 
+    private pure returns (uint8) {
         return direction == ShipDirection.Vertical ? startY + j : startY;
     }
 
@@ -227,10 +289,11 @@ contract BattleshipStorage is IntBattleshipStruct {
     }
 
     function doesOverlap(uint8 shipIndex, uint8[] memory startXPositions,
-    uint8[] memory startYPositions, uint8[] memory shipLengths, ShipDirection[] memory directions
-    ) private pure returns (bool) {
+    uint8[] memory startYPositions, uint8[] memory shipLengths, 
+    ShipDirection[] memory directions) private pure returns (bool) {
         for (uint8 k = 0; k < shipIndex; k++) {
-            if (doShipsOverlap(shipIndex, k, startXPositions, startYPositions, shipLengths, directions)) {
+            if (doShipsOverlap(shipIndex, k, startXPositions, startYPositions, 
+            shipLengths, directions)) {
                 return true;
             }
         }
@@ -238,8 +301,9 @@ contract BattleshipStorage is IntBattleshipStruct {
     }
 
     function doShipsOverlap(uint8 shipIndexA, uint8 shipIndexB,
-    uint8[] memory startXPositions, uint8[] memory startYPositions, uint8[] memory shipLengths,
-    ShipDirection[] memory directions) private pure returns (bool) {
+    uint8[] memory startXPositions, uint8[] memory startYPositions, 
+    uint8[] memory shipLengths, ShipDirection[] memory directions) 
+    private pure returns (bool) {
         uint8 startX_A = startXPositions[shipIndexA];
         uint8 startY_A = startYPositions[shipIndexA];
         uint8 shipLength_A = shipLengths[shipIndexA];
@@ -269,34 +333,51 @@ contract BattleshipStorage is IntBattleshipStruct {
 
     // Logic related function
 
-    function getShipPosition(address _address, uint8 _index) external view returns (ShipPosition memory) {
+    function getNumShips() external view returns (uint8){
+        return numShips;
+    }
+
+    function getShipPosition(address _address, uint8 _index) 
+    external view returns (ShipPosition memory) {
         return players[_address].shipPositions[_index];
     }
 
-    function getShipPositionByLeaf(address _player, uint8 _axisX, uint8 _axisY) public view returns (ShipPosition memory) {
+    function getShipPositionByAxis(address _player, uint8 _axisX, uint8 _axisY) 
+    public view returns (ShipPosition memory) {
         PlayerModel storage player = players[_player];
-        require(player.shipPositions.length == player.leafs.length, "Arrays length mismatch");
+        require(player.leafIndexX.length == sumOfShipSizes && player.leafIndexY.length
+            == sumOfShipSizes && player.leafIndexShipPosition.length == sumOfShipSizes,
+            "Arrays length mismatch");
         
-        for (uint8 i = 0; i < player.shipPositions.length; i++) {
+        for (uint8 i = 0; i < sumOfShipSizes; i++) {
             if (player.leafIndexX[i] == _axisX && player.leafIndexY[i] == _axisY) {
+                //emit LogMessage(uintToString(player.leafIndexShipPosition[i]));
                 return player.shipPositions[player.leafIndexShipPosition[i]];
             }
         }
         
-        // Leaf not found, return a default ShipPosition or handle as needed
-        ShipPosition memory defaultShipPosition;
+        // Ship not found, return a default ShipPosition
+        ShipPosition memory defaultShipPosition = ShipPosition({
+                shipLength: 0,
+                direction: ShipDirection.None,
+                axisX: 0,
+                axisY: 0,
+                state: ShipState.None
+            });
         return defaultShipPosition;
     }
 
-    function getMerkleTreeLeaf(address _address, uint8 _axisX, uint8 _axisY) external view returns (bytes32) {
-        return players[_address].leafs[_axisY][_axisX];
+    function getMerkleTreeLeaf(address _address, uint8 _axisX, uint8 _axisY) 
+    external view returns (bytes32) {
+        return players[_address].leaves[_axisY][_axisX];
     }
 
-    function getMerkleTreeLeafs(address _address) external view returns (bytes32[][] memory){
-        return players[_address].leafs;
+    function getMerkleTreeLeaves(address _address) external view returns (bytes32[][] memory) {
+        return players[_address].leaves;
     }
 
-    function convertAndEmitShipPositions(ShipPosition[] memory shipPositions) public {
+    function convertAndEmitShipPositions(ShipPosition[] memory shipPositions) 
+    public {
         string[] memory shipPositionStrings = new string[](shipPositions.length);
 
         for (uint256 i = 0; i < shipPositions.length; i++) {
@@ -338,7 +419,8 @@ contract BattleshipStorage is IntBattleshipStruct {
         return string(buffer);
     }
 
-    function shipDirectionToString(ShipDirection direction) internal pure returns (string memory) {
+    function shipDirectionToString(ShipDirection direction) 
+    internal pure returns (string memory) {
         if (direction == ShipDirection.Horizontal) {
             return "Horizontal";
         } else if (direction == ShipDirection.Vertical) {
@@ -370,10 +452,11 @@ contract BattleshipStorage is IntBattleshipStruct {
             playerModel.shipPositions.push(newShip);
         }
         //convertAndEmitShipPositions(playerModel.shipPositions);
-        transformShipPosition(playerModel);
+        transformShipPosition(playerModel, player);
     }
 
-function transformShipPosition(PlayerModel storage player) internal {
+    function transformShipPosition(PlayerModel storage _playerModel, address _player) 
+    internal {
         bool[][] memory shipMatrix = new bool[][](gridDimensionN);
 
         for (uint8 i = 0; i < gridDimensionN; i++) {
@@ -384,7 +467,7 @@ function transformShipPosition(PlayerModel storage player) internal {
         }
 
         for (uint8 i = 0; i < numShips; i++) {
-            ShipPosition memory ship = player.shipPositions[i];
+            ShipPosition memory ship = _playerModel.shipPositions[i];
 
             uint8 shipLength = ship.shipLength;
             uint8 axisX = ship.axisX;
@@ -396,37 +479,34 @@ function transformShipPosition(PlayerModel storage player) internal {
                     revert("Ship would go out of bounds horizontally");
                 }
                 for (uint8 j = axisX; j < axisX + shipLength; j++) {
-                    emit LogsMessage("Placing ship at", uint8ToString(j), uint8ToString(axisY));
+                    //emit LogsMessage("Placing ship at", uint8ToString(j), uint8ToString(axisY));
                     shipMatrix[axisY][j] = true;
-                    updatePlayerLeafIndexes(player, j, axisY, i);
+                    updatePlayerLeafIndexes(_playerModel, j, axisY, i);
                 }
             } else if (direction == ShipDirection.Vertical) {
                 if (axisY + shipLength > gridDimensionN) {
                     revert("Ship would go out of bounds vertically");
                 }
                 for (uint8 j = axisY; j < axisY + shipLength; j++) {
-                    emit LogsMessage("Placing ship at", uint8ToString(axisX), uint8ToString(j));
+                    //emit LogsMessage("Placing ship at", uint8ToString(axisX), uint8ToString(j));
                     shipMatrix[j][axisX] = true;
-                    updatePlayerLeafIndexes(player, axisX, j, i);
+                    updatePlayerLeafIndexes(_playerModel, axisX, j, i);
                 }
             }
         }
-        
+
         for (uint8 i = 0; i < gridDimensionN; i++) {
             bytes32[] memory temporaryLeaf = new bytes32[](gridDimensionN);
             for (uint8 j = 0; j < gridDimensionN; j++) {
-                temporaryLeaf[j] = shipMatrix[i][j] ? createMerkleTreeLeaf(1) : createMerkleTreeLeaf(0);
+                temporaryLeaf[j] = shipMatrix[i][j] ? createMerkleTreeLeaf(1, _player) : 
+                createMerkleTreeLeaf(0, _player);
             }
-            player.leafs.push(temporaryLeaf);
+            _playerModel.leaves.push(temporaryLeaf);
         }
     }
 
-    function updatePlayerLeafIndexes(
-        PlayerModel storage player,
-        uint8 leafIndexX,
-        uint8 leafIndexY,
-        uint8 leafIndexShipPosition
-    ) internal {
+    function updatePlayerLeafIndexes(PlayerModel storage player, uint8 leafIndexX,
+    uint8 leafIndexY,uint8 leafIndexShipPosition) internal {
         player.leafIndexX.push(leafIndexX);
         player.leafIndexY.push(leafIndexY);
         player.leafIndexShipPosition.push(leafIndexShipPosition);
@@ -543,12 +623,14 @@ function transformShipPosition(PlayerModel storage player) internal {
         return owner;
     }
 
-    function setBattleshipContractAddress(address _address) onlyOwner external returns (bool) {
+    function setBattleshipContractAddress(address _address) 
+    onlyOwner external returns (bool) {
         battleShipContractAddress = _address;
         return true;
     }
 
-    /*function updatePlayerByAddress(address _player, PlayerModel memory _playerModel) onlyAuthorized external returns (bool) {
+    /*function updatePlayerByAddress(address _player, PlayerModel memory _playerModel)
+     onlyAuthorized external returns (bool) {
         _playerModel.updatedAt = block.timestamp;
         if (_playerModel.createdAt == 0) {
             _playerModel.createdAt = block.timestamp;
@@ -559,11 +641,13 @@ function transformShipPosition(PlayerModel storage player) internal {
 
     // Game mode and lobby related functions
 
-    function getGamePhaseDetails(GamePhase _gamePhase) external view returns (GamePhaseDetail memory) {
+    function getGamePhaseDetails(GamePhase _gamePhase) 
+    external view returns (GamePhaseDetail memory) {
         return gamePhaseMapping[_gamePhase];
     }
 
-    function setGamePhaseDetails(GamePhase _gamePhase, GamePhaseDetail memory _detail) external returns (bool) {
+    function setGamePhaseDetails(GamePhase _gamePhase, GamePhaseDetail memory _detail) 
+    external returns (bool) {
         gamePhaseMapping[_gamePhase] = _detail;
         return true;
     }
@@ -572,7 +656,8 @@ function transformShipPosition(PlayerModel storage player) internal {
         return lobbyMap[_player];
     }
 
-    function setLobbyByAddress(address _player, LobbyModel memory _lobbyModel) external returns (bool) {
+    function setLobbyByAddress(address _player, LobbyModel memory _lobbyModel) 
+    external returns (bool) {
         lobbyMap[_player] = _lobbyModel;
         return true;
     }
@@ -595,103 +680,119 @@ function transformShipPosition(PlayerModel storage player) internal {
         return string(bytesString);
     }
 
-    /*function getRevealedPositionValueByBattleIdAndPlayer(uint256 _battleId, address _revealingPlayer, uint256 _position) external view returns (bytes32) {
+    /*function getRevealedPositionValueByBattleIdAndPlayer(uint256 _battleId, 
+    address _revealingPlayer, uint256 _position) external view returns (bytes32) {
         return revealedPositions[_battleId][_revealingPlayer][_position];
     }
 
-    function setRevealedPositionByBattleIdAndPlayer(uint256 _battleId, address _revealingPlayer, uint256 _position, bytes32 _value) external returns (bool) {
+    function setRevealedPositionByBattleIdAndPlayer(uint256 _battleId, 
+    address _revealingPlayer, uint256 _position, bytes32 _value) external returns (bool) {
         revealedPositions[_battleId][_revealingPlayer][_position] = _value;
         return true;
     }*/
 
-    function getMerkleTreeRootByBattleIdAndPlayer(uint256 _battleId, address _player) external view returns (bytes32) {
+    function getMerkleTreeRootByBattleIdAndPlayer(uint256 _battleId, address _player) 
+    public view returns (bytes32) {
         return merkleTreeRoot[_battleId][_player];
     }
 
-    function setMerkleTreeRootByBattleIdAndPlayer(uint256 _battleId, address _player, bytes32 _root) external returns (bool) {
+    function setMerkleTreeRootByBattleIdAndPlayer(uint256 _battleId, address _player, 
+    bytes32 _root) external returns (bool) {
         merkleTreeRoot[_battleId][_player] = _root;
         return true;
     }
 
     // Position attack related functions
 
-    function getLastFiredPositionIndexByBattleIdAndPlayer(uint256 _battleId, address _player) external view returns (uint8[2] memory) {
-        return lastFiredPositionIndex[_battleId][_player];
-    }
-
-    function setLastFiredPositionIndexByBattleIdAndPlayer(uint256 _battleId, address _player, uint8 _attackingPositionX, uint8 _attackingPositionY) external returns (bool) {
-        lastFiredPositionIndex[_battleId][_player] = [_attackingPositionX, _attackingPositionY];
-        return true;
-    }
-
-    function getLastPlayTimeByBattleId (uint _battleId) external view returns (uint){
+    function getLastPlayTimeByBattleId (uint256 _battleId) external view returns (uint256){
         return lastPlayTime[_battleId];
     }
     
-    function setLastPlayTimeByBattleId(uint _battleId, uint _playTime) external returns (bool){
+    function setLastPlayTimeByBattleId(uint256 _battleId, uint256 _playTime) 
+    external returns (bool){
         lastPlayTime[_battleId] = _playTime;
         return true;
     }
 
-    function getPositionsAttackedByBattleIdAndPlayer(uint256 _battleId, address _player) external view returns (uint8[] memory) {
-        return positionsAttacked[_battleId][_player];
+    function getPositionsAttackedLength(uint256 _battleId, address _player) 
+    external view returns (uint256) {
+        return positionsAttacked[_battleId][_player].length;
     }
 
-    // check the correctness
-    function setPositionsAttackedByBattleIdAndPlayer(uint256 _battleId, address _player, uint8 attackingPositionX, uint8 attackingPositionY) external returns (bool) {
-        positionsAttacked[_battleId][_player] = [attackingPositionX, attackingPositionY];
+    function getLastPositionsAttackedByBattleIdAndPlayer(uint256 _battleId, address _player) 
+    external view returns (uint8[2] memory) {
+        
+        if (positionsAttacked[_battleId][_player].length == 0) {
+            // Return a value that can be easily detected as uninitialized
+            return [type(uint8).max, type(uint8).max]; 
+        }
+
+        uint8[2] memory lastPositionAttacked = positionsAttacked[_battleId][_player][positionsAttacked[_battleId][_player].length - 1];
+        return lastPositionAttacked;
+    }
+
+    function setPositionsAttackedByBattleIdAndPlayer(uint256 _battleId, address _player, 
+    uint8 _attackingPositionX, uint8 _attackingPositionY) external returns (bool) {
+        positionsAttacked[_battleId][_player].push([_attackingPositionY, 
+        _attackingPositionX]);
         return true;
     }
 
     // Correct positions hit related functions
 
-    function getCorrectPositionsHitByBattleIdAndPlayer(uint256 _battleId, address _player) external view returns (ShipPosition[] memory) {
+    function getCorrectPositionsHitByBattleIdAndPlayer(uint256 _battleId, address _player) 
+    external view returns (ShipPosition[] memory) {
         return correctPositionsHit[_battleId][_player];
     }
 
-    function setCorrectPositionsHitByBattleIdAndPlayer(uint256 _battleId, address _player, ShipPosition[] memory _positions) external returns (bool) {
-        correctPositionsHit[_battleId][_player] = _positions;
+    function setCorrectPositionsHitByBattleIdAndPlayer(uint256 _battleId, address _player, 
+    ShipPosition memory _positions) external returns (bool) {
+        correctPositionsHit[_battleId][_player].push(_positions);
         return true;
     }
 
     // Battle verification related functions
 
-    /*function getBattleVerification(uint256 _battleId, address _player) external view returns (VerificationStatus) {
+    /*function getBattleVerification(uint256 _battleId, address _player) 
+    external view returns (VerificationStatus) {
         return battleVerification[_battleId][_player];
     }
 
-    function setBattleVerification(uint256 _battleId, address _player, VerificationStatus _verificationStatus) external returns (bool) {
+    function setBattleVerification(uint256 _battleId, address _player, 
+    VerificationStatus _verificationStatus) external returns (bool) {
         battleVerification[_battleId][_player] = _verificationStatus;
         return true;
     }*/
 
     // Revealed leafs related functions
 
-    function getRevealedLeafsByBattleIdAndPlayer(uint256 _battleId, address _player) external view returns (bytes32) {
-        return revealedLeafs[_battleId][_player];
+    function getRevealedLeavesByBattleIdAndPlayer(uint256 _battleId, address _player) 
+    external view returns (bytes32) {
+        return revealedLeaves[_battleId][_player];
     }
 
-    function setRevealedLeafsByBattleIdAndPlayer(uint256 _battleId, address _player, bytes32 _leafs) external returns (bool) {
-        revealedLeafs[_battleId][_player] = _leafs;
+    function setRevealedLeavesByBattleIdAndPlayer(uint256 _battleId, address _player, 
+    bytes32 _leaves) external returns (bool) {
+        revealedLeaves[_battleId][_player] = _leaves;
         return true;
     }
 
-    function getProofByIndexAndPlayer(uint256 _index, address _player) external view returns (bytes32) {
+    /*function getProofByIndexAndPlayer(uint256 _index, address _player) external view returns (bytes32) {
         return proofs[_player][_index];
     }
 
     function setProofByIndexAndPlayer(uint256 _index, address _player, bytes32 _proof) external returns (bool) {
         proofs[_player][_index] = _proof;
         return true;
-    }
+    }*/
 
     // Miscellaneous functions
 
-    function getTurnByBattleId(uint _battleId) external view returns(address){
+    function getTurnByBattleId(uint256 _battleId) external view returns(address){
         return turn[_battleId];
     }
     
-    function setTurnByBattleId (uint _battleId, address _turn) external returns (bool){
+    function setTurnByBattleId (uint256 _battleId, address _turn) external returns (bool){
         turn[_battleId]  = _turn;
         return true;
     }
@@ -705,7 +806,8 @@ function transformShipPosition(PlayerModel storage player) internal {
 
 /*
 
-    function setPlayerAddresses(address[] memory _playerAddresses) external onlyOwner returns (bool) {
+    function setPlayerAddresses(address[] memory _playerAddresses) 
+    external onlyOwner returns (bool) {
         playerAddresses = _playerAddresses;
         return true;
     }
@@ -745,7 +847,8 @@ function transformShipPosition(PlayerModel storage player) internal {
         return minTimeRequiredForPlayerToRespond;
     }
 
-    function setMinTimeRequiredForPlayerToRespond(uint256 _minTime) external onlyOwner returns (bool) {
+    function setMinTimeRequiredForPlayerToRespond(uint256 _minTime) 
+    external onlyOwner returns (bool) {
         minTimeRequiredForPlayerToRespond = _minTime;
         return true;
     }
@@ -777,7 +880,8 @@ function transformShipPosition(PlayerModel storage player) internal {
         return true;
     }
 
-    function setTransactionOfficer(address payable _transactionOfficer) external onlyOwner returns (bool) {
+    function setTransactionOfficer(address payable _transactionOfficer) 
+    external onlyOwner returns (bool) {
         transactionOfficer = _transactionOfficer;
         return true;
     }
@@ -786,7 +890,8 @@ function transformShipPosition(PlayerModel storage player) internal {
         return rewardCommissionRate;
     }
 
-    function setRewardCommissionRate(uint256 _commissionRate) external onlyOwner returns (bool) {
+    function setRewardCommissionRate(uint256 _commissionRate) 
+    external onlyOwner returns (bool) {
         rewardCommissionRate = _commissionRate;
         return true;
     }
@@ -795,7 +900,8 @@ function transformShipPosition(PlayerModel storage player) internal {
         return cancelCommissionRate;
     }
 
-    function setCancelCommissionRate(uint256 _commissionRate) external onlyOwner returns (bool) {
+    function setCancelCommissionRate(uint256 _commissionRate) 
+    external onlyOwner returns (bool) {
         cancelCommissionRate = _commissionRate;
         return true;
     }
