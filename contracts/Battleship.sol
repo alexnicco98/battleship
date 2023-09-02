@@ -121,7 +121,7 @@ contract Battleship is IntBattleshipStruct, MerkleProof {
         /*dataStorage.setMerkleTreeRootByBattleIdAndPlayer(battleId, battle.host, 
             lobby.playerOneRootHash);
         dataStorage.setMerkleTreeRootByBattleIdAndPlayer(battleId, battle.client, 
-            _root);*/
+            _root);*/   
         
         //Set the merkle tree root for both players.
         dataStorage.setMerkleTreeRootByBattleIdAndPlayer(battleId, battle.host, lobby.playerOneRootHash);
@@ -141,8 +141,8 @@ contract Battleship is IntBattleshipStruct, MerkleProof {
         return battleId;
     }
 
-    function attack(uint256 _battleId, bytes32 _proofLeaf, bytes32 _currentPositionLeaf, uint8 _attackingPositionX, 
-    uint8 _attackingPositionY) public returns (bool){
+    function attack(uint256 _battleId, bytes32[] memory _proofLeaf, bytes32 _currentPositionLeaf, 
+    uint8 _attackingPositionX, uint8 _attackingPositionY) public returns (bool){
         
         BattleModel memory battle = dataStorage.getBattle(_battleId);
         GamePhaseDetail memory gamePhaseDetail = dataStorage.getGamePhaseDetails(
@@ -151,36 +151,40 @@ contract Battleship is IntBattleshipStruct, MerkleProof {
         address opponent = battle.host == player ? battle.client : battle.host;
         address nextTurn = dataStorage.getTurnByBattleId(_battleId);
 
-        uint8[2] memory previousPositionIndex = dataStorage.
-            getLastPositionsAttackedByBattleIdAndPlayer(_battleId, player);
-        bytes32 root = dataStorage.getMerkleTreeRootByBattleIdAndPlayer(_battleId, opponent);
+        /*uint8[2] memory previousPositionIndex = dataStorage.
+            getLastPositionsAttackedByBattleIdAndPlayer(_battleId, player);*/
+        uint8[2] memory previousPositionIndex = [_attackingPositionY, _attackingPositionX];
+        //bytes32 root = dataStorage.getMerkleTreeRootByBattleIdAndPlayer(_battleId, opponent);
 
         /*emit LogMessage(string(abi.encodePacked("proof: ", bytes32ToString(
             _currentPositionLeaf), ", rootHash: ", bytes32ToString(root), 
             ", proofLeafHash: ", bytes32ToString(_proofLeaf), ", indexY: ", 
             uintToString(previousPositionIndex[0]), ", indexX: ", 
             uintToString(previousPositionIndex[1]))));*/
-        /** TODO: change the proof part to adapt **/
-        uint256 len = dataStorage.getPositionsAttackedLength(_battleId, opponent);
-        //emit LogMessage(string(abi.encodePacked("len: ", uintToString(len))));
+
+        //uint256 len = dataStorage.getPositionsAttackedLength(_battleId, player);
+        
         bool proofValidity = false;
-        if ( len == 0) {
+        /*if ( len == 0) {
             proofValidity = true;
         } else {
             
-            ProofVariables memory proofVar = ProofVariables({
-                proof: _proofLeaf,
-                root: root,
-                leaf: _currentPositionLeaf,
-                index: previousPositionIndex
-            });
+            
             //PlayerModel memory playerModel = dataStorage.getPlayerByAddress(opponent);
             //proof = merkleProof.createProof(_currentPositionLeaf,
             //_previousPositionLeaf, _previousPositionIndex);
             //dataStorage.setProofByIndexAndPlayer(_previousPositionIndex, player, proof);
-            proofValidity = merkleProof.checkProofOrdered(proofVar);
+            
             
         }
+        ProofVariables memory proofVar = ProofVariables({
+                proof: _proofLeaf,
+                root: root,
+                leaf: _currentPositionLeaf,
+                index: previousPositionIndex
+            });*/
+        proofValidity = dataStorage.verifyProof(_proofLeaf, opponent, 
+            _attackingPositionY, _attackingPositionX);
 
         uint256 lastPlayTime = dataStorage.getLastPlayTimeByBattleId(_battleId);
 

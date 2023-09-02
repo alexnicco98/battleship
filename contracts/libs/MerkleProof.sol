@@ -9,13 +9,57 @@ pragma abicoder v2;
 contract MerkleProof {
 
     struct ProofVariables{
-        bytes32 proof; 
+        bytes32[] proof; 
         bytes32 root;
         bytes32 leaf;
         uint8[2] index;
     }
 
     event CorrectProofEvent(bool returnValue);
+
+    function verifyGeneratedProof(ProofVariables memory _proofVar) public pure returns (bool) {
+        bytes32 h;
+        bytes32 currentHash = _proofVar.leaf;
+
+        for (uint256 i = 0; i < _proofVar.proof.length; i++) {
+            bytes32 el = _proofVar.proof[i];
+
+            if (_proofVar.index[1] % 2 == 0) {
+                h = keccak256(abi.encodePacked(currentHash, el));
+            } else {
+                h = keccak256(abi.encodePacked(el, currentHash));
+            }
+
+            // Update the current hash
+            currentHash = h;
+
+            // Update the sibling index
+            _proofVar.index[0] = uint8(_proofVar.index[0]) / 2;
+            _proofVar.index[1] = uint8(_proofVar.index[1]) / 2;
+        }
+
+        return h == _proofVar.root;
+    }
+
+
+
+    function checkProofOrdered(ProofVariables memory _proofVar) public pure returns (bool) {
+        return processProof(_proofVar) == _proofVar.root;
+    }
+
+    function processProof(ProofVariables memory _proofVar)
+    internal pure returns (bytes32){
+        bytes32 computedHash = _proofVar.leaf;
+        for (uint256 i = 0; i < _proofVar.proof.length; i++) {
+            computedHash = _hashPair(computedHash, _proofVar.proof[i]);
+        }
+        return computedHash;
+    }
+
+    function _hashPair(bytes32 a, bytes32 b) private pure returns (bytes32) {
+        return a < b ? keccak256(abi.encodePacked(a, b)) : 
+                       keccak256(abi.encodePacked(b, a));
+    }
 
     // from StorJ -- https://github.com/nginnever/storj-audit-verifier/blob/master/contracts/MerkleVerifyv3.sol
     // check the function to work with the other code
@@ -35,7 +79,7 @@ contract MerkleProof {
         return currentHash == merkleRoot;
     }*/
     
-    function checkProofOrdered(ProofVariables memory _proofVar) 
+    /*function checkProofOrdered(ProofVariables memory _proofVar) 
     public pure returns (bool) {
         bytes32 el;
         bytes32 h;
@@ -59,10 +103,10 @@ contract MerkleProof {
 
             if (!isHashed) {
                 if (_proofVar.index[1] % 2 == 0) {
-                    h = keccak256(abi.encodePacked(el, _proofVar.leaf));
+                    h = keccak256(abi.encodePacked(el, _proofVar.index[0], _proofVar.index[1]));
                     _proofVar.index[1] = uint8(_proofVar.index[1]) / 2;
                 } else {
-                    h = keccak256(abi.encodePacked(_proofVar.leaf, el));
+                    h = keccak256(abi.encodePacked(_proofVar.index[0], _proofVar.index[1], el));
                     _proofVar.index[1] = uint8(_proofVar.index[1]) / 2 + 1;
                 }
                 isHashed = true;
@@ -84,7 +128,7 @@ contract MerkleProof {
         }
 
         return h == _proofVar.root;
-    }
+    }*/
 
     function pow(uint256 _base, uint256 _exponent) internal pure returns (uint256) {
         if (_exponent == 0) {

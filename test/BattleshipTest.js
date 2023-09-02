@@ -118,18 +118,37 @@ contract("Battleship", accounts => {
         console.log("-----------------------------------------------");
         console.log("player Two leaves:", playerTwoLeaves.toString());
 
+        await battleshipStorageInstance.calculateMerkleRoot(playerOneLeaves, playerOne);
+        await battleshipStorageInstance.calculateMerkleRoot(playerTwoLeaves, playerTwo);
+
+        // Find the emitted event in the transaction logs
+        /*let stakeEvent = transaction.logs.find(log => log.event === "LogMessage");
+        
+        // Access the stake value from the event
+        let emittedStakeValue = stakeEvent.args.value;
+
+        assert.equal(transaction.logs[0].event, "LogMessage", 
+            "Event must indicate that a log message values is emitted");
+
+        // Display the emitted and actual stake values
+        console.log("Emitted log message:", emittedStakeValue.toString());*/
+
         // Calculate Merkle roots for both players
         playerOneRootHash = await battleshipStorageInstance.
-            calculateMerkleRoot(playerOneLeaves);
+            getMerkleRoot(playerOne);
         playerTwoRootHash = await battleshipStorageInstance.
-            calculateMerkleRoot(playerTwoLeaves);
+            getMerkleRoot(playerTwo);
         let gamePhase = GamePhase.Placement;
+        let lenOne = await battleshipStorageInstance.getMerkleTreeProofLength(playerOne);
+        let lenTwo = await battleshipStorageInstance.getMerkleTreeProofLength(playerTwo);
         
         console.log("-----------------------------------------------");
         console.log("-----------------------------------------------");
-        console.log("playerOneRootHash:", playerOneRootHash.toString());
+        console.log("playerOneRootHash:", playerOneRootHash);
+        console.log("playerOneRootHash len:", lenOne.toString());
         console.log("-----------------------------------------------");
-        console.log("playerTwoRootHash:", playerTwoRootHash.toString());
+        console.log("playerTwoRootHash:", playerTwoRootHash);
+        console.log("playerTwoRootHash len:", lenTwo.toString());
         console.log("-----------------------------------------------");
         console.log("-----------------------------------------------");
 
@@ -195,12 +214,12 @@ contract("Battleship", accounts => {
         let attackingPosition = positionsAttackedByPlayerTwo[0]; 
         let currentPositionLeafAttackedByPlayerTwo = await battleshipStorageInstance.
             getMerkleTreeLeaf(playerOne, attackingPosition.axisX, attackingPosition.axisY);
-        let proofleaf = await battleshipStorageInstance.generateSingleLeafProof(
-            playerOneLeaves, currentPositionLeafAttackedByPlayerTwo, 
-            playerOneRootHash, attackingPosition.axisY, attackingPosition.axisX);
+        let proof = await battleshipStorageInstance.getMerkleTreeProof(playerOne);
+        let proofleaf = await battleshipStorageInstance.generateProof(
+            playerOne, attackingPosition.axisY, attackingPosition.axisX);
         // Get the current state of the battle
         let initialBattleState = await battleshipStorageInstance.getBattle(battleId);
-        
+
         /*let root = battleshipStorageInstance.getMerkleTreeRootByBattleIdAndPlayer(battleId, 
             playerOne);
         let proofValidity = await battleshipStorageInstance.verifyAdversaryLeaf(battleId, 
@@ -215,7 +234,8 @@ contract("Battleship", accounts => {
 
         console.log("playerTwo perform the 1° attack");
         console.log("battleId:", battleId.toString());
-        console.log("proofleaf:", proofleaf);
+        console.log("proofleaf return from getMerkleTreeProof:", proof);
+        console.log("proofleaf generate from generateProof:", proofleaf);
         console.log("currentPositionLeafAttackedByPlayerTwo:", 
             currentPositionLeafAttackedByPlayerTwo);
         console.log("attackingPosition.axisX:", attackingPosition.axisX);
@@ -224,6 +244,13 @@ contract("Battleship", accounts => {
         console.log("-----------------------------------------------");
         console.log("-----------------------------------------------");
 
+        let verify = await battleshipStorageInstance.verifyProof(
+            proofleaf, playerOne, attackingPosition.axisY, attackingPosition.axisX);
+
+        //console.log("Verifiy bool:", verify);
+
+        assert.equal(verify.receipt.status, true, "Verify should be equal to true");
+
         /*let test = await battleshipStorageInstance.getShipPositionByLeaf(playerOne,
             attackingPosition.axisX, attackingPosition.axisY);
         console.log("getShipPositionByLeaf:", test);*/
@@ -231,13 +258,13 @@ contract("Battleship", accounts => {
             getMerkleTreeRootByBattleIdAndPlayer(battleId, playerTwo);
         console.log("playerTwo root:", root);*/
         /*await battleshipStorageInstance.setPositionsAttackedByBattleIdAndPlayer(battleId,
-            playerTwo, attackingPosition.axisX, attackingPosition.axisY);
+            playerTwo, attackingPosition.axisX, attackingPosition.axisY);*/
+        //let positionAttacked = await battleshipStorageInstance.
+        //    getLastPositionsAttackedByBattleIdAndPlayer(battleId, playerTwo);
         let len = await battleshipStorageInstance.getPositionsAttackedLength(battleId, 
             playerTwo);
-        let positionAttacked = await battleshipStorageInstance.
-            getLastPositionsAttackedByBattleIdAndPlayer(battleId, playerTwo);
-        console.log("len: ", len.toString());
-        console.log("Attacked Position: ", positionAttacked.toString());*/
+        console.log("len before: ", len.toString());
+        //console.log("Attacked Position: ", positionAttacked.toString());
 
         // playerTwo perform the 1° attack
         let attackResult = await battleshipInstance.attack(
@@ -247,6 +274,9 @@ contract("Battleship", accounts => {
     
         // Get the updated state of the battle
         let updatedBattleState = await battleshipStorageInstance.getBattle(battleId);
+        len = await battleshipStorageInstance.getPositionsAttackedLength(battleId, 
+            playerTwo);
+        console.log("len after: ", len.toString());
 
         // Check that the AttackLaunched event is emitted
         /*assert.equal(attackResult.logs[0].event, "ConfirmShotStatus", 
@@ -287,6 +317,10 @@ contract("Battleship", accounts => {
             attackingPosition.axisX, attackingPosition.axisY, { from: playerOne }
         );
 
+        //len = await battleshipStorageInstance.getPositionsAttackedLength(battleId, 
+        //    playerOne);
+        //console.log("len after: ", len.toString());
+
         //console.log("attack result:", attackResult);
 
         // Check if the attack was successful
@@ -320,11 +354,18 @@ contract("Battleship", accounts => {
         //test = await battleshipStorageInstance.getShipPositionByLeaf(playerOne,
         //    attackingPosition.axisX, attackingPosition.axisY);
         //console.log("getShipPositionByLeaf:", test.logs.args);
+        len = await battleshipStorageInstance.getPositionsAttackedLength(battleId, 
+            playerTwo);
+        console.log("len before: ", len.toString());
 
         attackResult = await battleshipInstance.attack(
             battleId, proofleaf, currentPositionLeafAttackedByPlayerTwo,
             attackingPosition.axisX, attackingPosition.axisY,
             { from: playerTwo });
+        
+        len = await battleshipStorageInstance.getPositionsAttackedLength(battleId, 
+                playerTwo);
+        console.log("len after: ", len.toString());
 
         // ------------------------------------------------------------------
         // playerOne perform the 2° attack

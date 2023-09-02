@@ -144,12 +144,24 @@ interface IntBattleshipStorage is IntBattleshipStruct {
     // create a Merkle tree leaves from the ship positions
     //function createMerkleTreeLeaf(uint256 _state) external view returns (bytes32);
 
+    function getMerkleTreeProof(address _player) external view returns (bytes32[] memory);
+
+    function getMerkleTreeProofLength(address _player) external view returns (uint256);
+
+    function getMerkleRoot(address _player) external view returns (bytes32);
+
     // create a Merkle root from the Merkle tree leaves
-    function calculateMerkleRoot(bytes32[][] memory _leaves) 
-    external pure returns (bytes32);
+    function calculateMerkleRoot(bytes32[][] memory _leaves,
+    address _player) external returns (bytes32);
 
     function generateSingleLeafProof(bytes32[][] memory _leaves, bytes32 _leaf, 
     bytes32 _root, uint8 _leafIndexY, uint8 _leafIndexX) external pure returns (bytes32);
+
+    function generateProof(address _player, uint8 axisY, uint8 axisX) 
+    external returns (bytes32[] memory);
+
+    function verifyProof(bytes32[] memory _proof, address _player, uint8 axisY, uint8 axisX) 
+    external returns (bool);
 
     function verifyAdversaryLeaf(uint256 _battleId, address _adversary, bytes32 _leaf, 
     bytes32 _root) external view returns (bool);

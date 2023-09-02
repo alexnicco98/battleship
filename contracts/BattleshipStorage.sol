@@ -36,6 +36,7 @@ contract BattleshipStorage is IntBattleshipStruct {
     //mapping(uint256 => mapping(address => mapping(uint256 => bytes32))) 
     //private revealedPositions;
     mapping(uint256 => mapping(address => uint8[2][])) private positionsAttacked;
+    mapping(address => bytes32[]) private merkleNodes;
     mapping(uint256 => mapping(address => bytes32)) private merkleTreeRoot;
     mapping(uint256 => address) private turn;
     mapping(uint256 => uint256) private lastPlayTime;
@@ -44,6 +45,8 @@ contract BattleshipStorage is IntBattleshipStruct {
     mapping(uint256 => mapping(address => bytes32)) private revealedLeaves;
     mapping(address => LobbyModel) private lobbyMap;
     mapping(GamePhase => GamePhaseDetail) private gamePhaseMapping;
+    //bytes32[] proof;
+    //bytes32[] hashedDataSequence;
 
     event LogMessage(string _message);
     event LogsMessage(string _message1, string _message2, string _message3);
@@ -141,51 +144,180 @@ contract BattleshipStorage is IntBattleshipStruct {
         // Calculate the value of the leaf node
         // I'm adding also the addrress because otherwise,
         // the leaf are equals for both players
-        bytes32 value = bytes32(_state) ^ salt ^ bytes32(uint256(uint160(_player)));
+       // bytes32 value = bytes32(_state) ^ salt ^ bytes32(uint256(uint160(_player)));
 
         // Calculate the value of the leaf node
-        value = keccak256(abi.encodePacked(value));
+        // , bytes32(uint256(uint160(_player)))
+        bytes32 leaf = keccak256(abi.encodePacked(bytes32(_state), salt));
 
-        return value;
+        return leaf;
     }
 
-    // modify this function
-    function calculateMerkleRoot(bytes32[][] memory leafs)
-    external pure returns (bytes32) {
-        require(leafs.length > 0, "At least one leaf is required");
+    function getMerkleTreeProof(address _player) external view returns (bytes32[] memory){
+        return merkleNodes[_player];
+    }
 
-        bytes32[] memory hashes = new bytes32[](leafs.length * leafs[0].length);
-        for (uint8 i = 0; i < leafs.length; i++) {
-            for (uint8 j = 0; j < leafs[i].length; j++) {
-                hashes[i * leafs[0].length + j] = leafs[i][j];
+    function getMerkleTreeProofLength(address _player) external view returns (uint256){
+        return merkleNodes[_player].length;
+    }
+
+    function getMerkleRoot(address _player) external view returns (bytes32) {
+        bytes32[] storage nodes = merkleNodes[_player];
+        
+        // Ensure there are nodes in the array
+        require(nodes.length > 0, "No Merkle nodes for this player");
+        
+        // Return the last node in the array, which should be the root
+        return nodes[nodes.length - 1];
+    }
+
+    /*function calculateMerkleRoot(bytes32[][] memory _leaves, address _player) 
+    external returns (bytes32) {
+        require(_leaves.length > 0, "At least one leaf is required");
+
+        bytes32[] storage nodes = merkleNodes[_player];
+        bytes32[][] memory localLeaves = _leaves; // Create a local copy
+
+        bytes32 _leaf = localLeaves[0][0];
+
+        // Calculate the sibling indexes
+        uint8 siblingIndexY = 0;
+        uint8 siblingIndexX = 1;
+
+        // Check for valid sibling index
+        require(siblingIndexX < localLeaves[siblingIndexY].length, "Invalid sibling index X");
+
+        // Calculate the sibling value
+        bytes32 siblingValue = localLeaves[siblingIndexY][siblingIndexX];
+
+        // Calculate the parent hash
+        bytes32 parentHash = sha256(abi.encodePacked(_leaf, siblingValue));
+        nodes.push(parentHash);
+
+        // Continue up the tree until reaching the root
+        while (localLeaves.length > 1) {
+            // Calculate the sibling indexes for the parent
+            uint8 parentSiblingIndexY = siblingIndexY / 2;
+            uint8 parentSiblingIndexX;
+
+            if (siblingIndexX % 2 == 0) {
+                parentSiblingIndexX = siblingIndexX + 1;
+            } else {
+                parentSiblingIndexX = siblingIndexX - 1;
             }
-        }
 
-        return calculateMerkleRootInternal(hashes);
+            // Check for a valid parent sibling index
+            require(parentSiblingIndexX < localLeaves[parentSiblingIndexY].length, "Invalid parent sibling index X");
+
+            // Calculate the parent sibling value
+            bytes32 parentSiblingValue = localLeaves[parentSiblingIndexY][parentSiblingIndexX];
+
+            // Calculate the new parent hash
+            parentHash = sha256(abi.encodePacked(parentSiblingValue, parentHash));
+            nodes.push(parentHash);
+
+            // Update sibling indexes for the next iteration
+            siblingIndexX = parentSiblingIndexX;
+            siblingIndexY = parentSiblingIndexY;
+
+            // Reduce the size of localLeaves array
+            localLeaves = trimLeaves(localLeaves);
+
+            // Update _leaf with the new value
+            _leaf = localLeaves[0][0];
+        }
+        
+        return parentHash;
     }
 
-    function calculateMerkleRootInternal(bytes32[] memory nodes) 
-    internal pure returns (bytes32) {
-        if (nodes.length == 1) {
-            return nodes[0];
+    // Helper function to trim the leaves array
+    function trimLeaves(bytes32[][] memory _leaves) internal pure returns (bytes32[][] memory) {
+        bytes32[][] memory newLeaves = new bytes32[][](_leaves.length / 2);
+        
+        for (uint256 i = 0; i < newLeaves.length; i++) {
+            newLeaves[i] = _leaves[i * 2];
+        }
+        
+        return newLeaves;
+    }*/
+    function calculateMerkleRoot(bytes32[][] memory _leaves, address _player)
+    external returns (bytes32) {
+        require(_leaves.length > 0, "At least one leaf is required");
+        bytes32[] storage nodes = merkleNodes[_player];
+
+        uint256 n = gridDimensionN;
+        uint256 dim = n * 2;
+        uint256 index = 0;
+        bytes32[] memory newRow = new bytes32[](dim);
+
+        for (uint256 i = 0; i < n ; i++) {
+            for (uint256 j = 0; j < n ; j+=2) {
+                newRow[index] = sha256(abi.encodePacked(_leaves[i][j], _leaves[i][j + 1]));
+                /*string memory test = string(abi.encodePacked("Merged --> AxisY: ",
+                    uintToString(i), ", AxisX: ", uintToString(j), ", with --> axisY: ", 
+                    uintToString(i), ", AxisX: ", uintToString(j+1)));
+                emit LogMessage(test);*/
+                nodes.push(newRow[index]);
+                index++;
+            } 
+        }
+        return calculateMerkleRootInternal(newRow, _player);
+    }
+
+    function calculateMerkleRootInternal(bytes32[] memory _nodes, address _player) 
+    internal returns (bytes32) {
+        uint256 n = _nodes.length;
+        bytes32[] storage nodes = merkleNodes[_player];
+
+        if (n == 1) {
+            //nodes.push(_nodes[0]);
+            return _nodes[0];
         }
 
-        uint256 n = nodes.length;
         require(n % 2 == 0, "Number of nodes should be even");
 
         bytes32[] memory parents = new bytes32[](n / 2);
-        for (uint256 i = 0; i < n / 2; i++) {
-            // Calculate the value of the XOR
-            bytes32 value = nodes[i * 2] ^ nodes[i * 2 + 1];
-            parents[i] = sha256(abi.encodePacked(value));
+        uint256 index = 0;
+
+        for (uint256 i = 0; i < n - 1; i += 2) {
+            require(index < parents.length, "Index should be less that the size of the array");
+            parents[index] = sha256(abi.encodePacked(_nodes[i], _nodes[i + 1]));
+            /*string memory test = string(abi.encodePacked("Merged --> nodeIndex: ",
+                    uintToString(i), ", with: ", uintToString(i+1)));
+            emit LogMessage(test);*/
+            nodes.push(parents[index]);
+            index++;
         }
 
-        return calculateMerkleRootInternal(parents);
+        return calculateMerkleRootInternal(parents, _player);
+    } 
+
+
+    function buildMerkleTree(bytes32[] storage hashArray) 
+    internal returns (bytes32[] memory){
+        uint256 count = hashArray.length; // number of leaves
+        uint256 offset = 0;
+        while (count > 0) {
+            // Iterate 2 by 2, building the hash pairs
+            for (uint256 i = 0; i < count - 1; i += 2) {
+                hashArray.push(
+                    _hashPair(hashArray[offset + i], hashArray[offset + i + 1])
+                );
+            }
+            offset += count;
+            count = count / 2;
+        }
+        return hashArray;
+    }
+
+    function _hashPair(bytes32 a, bytes32 b) private pure returns (bytes32) {
+        return a < b ? keccak256(abi.encodePacked(a, b)) : 
+                       keccak256(abi.encodePacked(b, a));
     }
 
     // Function to generate Merkle Proof for single leaf
-    function generateSingleLeafProof(bytes32[][] memory _leaves, bytes32 _leaf, bytes32 _root, 
-    uint8 _leafIndexY, uint8 _leafIndexX) external pure returns (bytes32) {
+    /*function generateSingleLeafProof(bytes32[][] memory _leaves, bytes32 _leaf, 
+    bytes32 _root, uint8 _leafIndexY, uint8 _leafIndexX) external pure returns (bytes32) {
         require(_leafIndexY < _leaves.length, "Invalid leaf index Y");
         require(_leafIndexX < _leaves[_leafIndexY].length, "Invalid leaf index X");
         
@@ -220,6 +352,77 @@ contract BattleshipStorage is IntBattleshipStruct {
 
         
         return _root;
+    }*/
+
+    /* knowing that I want a function generateProof(address _player, uint8 axisY, 
+    uint8 axisX) external view returns (bytes32[] memory) capable of return the 
+    list of hashes from the axisY and axisX that represent a specific leaf up 
+    to the root (inlcude only the hash node present in the upstream path 
+    (in this case with 16 leaf the tree have 4 level so 4 nodes)) */
+    // calculate the Merkle proof from the specified _player, axisY, and axisX to the root
+    function generateProof(address _player, uint8 axisY, uint8 axisX) 
+    external view returns (bytes32[] memory) {
+        uint256 n = gridDimensionN;
+        require(axisY < n && axisX < n, "Invalid leaf coordinates");
+
+        bytes32[] storage nodes = merkleNodes[_player];
+        bytes32[] memory proof = new bytes32[](n);
+
+        // check this, should be the index of the first row 
+        // from the bottom inside the merkleNodes
+        uint256 index = (axisY * n + axisX); 
+        if (index != 0)
+            index = index / 2; 
+        uint256 offset = gridDimensionN * 2;
+
+        for (uint256 i = 0; i < n; i++) {
+            require(index < nodes.length, "Invalid index length");
+            proof[i] = nodes[index];
+
+            // Calculate the parent index
+            index = index + offset;
+            offset = offset / 2;
+        }
+
+        return proof;
+    }
+
+    function verifyProof(bytes32[] memory _proof, address _player, uint8 axisY, uint8 axisX) 
+    external returns (bool) {
+        uint256 n = gridDimensionN;
+        require(axisY < n && axisX < n, "Invalid leaf coordinates");
+
+        bytes32[] storage nodes = merkleNodes[_player];
+
+        uint256 index = (axisY * n + axisX); 
+        if (index != 0)
+            index = index / 2; 
+        uint256 offset = gridDimensionN * 2;
+
+        for (uint256 i = 0; i < n; i++) {
+            require(index < nodes.length && i < _proof.length, "Invalid index length");
+            /*string memory test = string(abi.encodePacked("Merged --> proof: ",
+                    bytes32ToString(_proof[i]), ", merkleNodes: ", 
+                    bytes32ToString(nodes[index])));
+            emit LogMessage(test);*/
+            if (_proof[i] != nodes[index])
+                return false;
+
+            // Calculate the parent index
+            index = index + offset;
+            offset = offset / 2;
+        }
+
+        return true;
+    }
+
+    function log2(uint256 x) internal pure returns (uint8) {
+        uint8 result = 0;
+        while (x > 1) {
+            result++;
+            x /= 2;
+        }
+        return result;
     }
 
     // Function to verify adversary's single leaf integrity
