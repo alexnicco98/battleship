@@ -134,14 +134,14 @@ contract Battleship is IntBattleshipStruct, MerkleProof {
         // Update the lobby
         lobby.playerTwoRootHash = _root;
         dataStorage.setLobbyByAddress(_creatorAddress, lobby);
-        dataStorage.updateBattleById(battleId, battle);
+        dataStorage.updateBattleById(battleId, battle, GamePhase.Shooting);
         
         emit BattleStarted(battleId, GamePhase.Shooting, [battle.host, battle.client]);
         
         return battleId;
     }
 
-    function attack(uint256 _battleId, bytes32[] memory _proofLeaf, bytes32 _currentPositionLeaf, 
+    function attack(uint256 _battleId, bytes32[] memory _proofLeaf,
     uint8 _attackingPositionX, uint8 _attackingPositionY) public returns (bool){
         
         BattleModel memory battle = dataStorage.getBattle(_battleId);
@@ -237,7 +237,7 @@ contract Battleship is IntBattleshipStruct, MerkleProof {
         getCorrectPositionsHitByBattleIdAndPlayer(_battleId, _playerAddress);
 
         // DEBUG
-        convertAndEmitShipPositions(correctPositionsHit);
+        //convertAndEmitShipPositions(correctPositionsHit);
         
         if(correctPositionsHit.length == dataStorage.getSumOfShipSize()){
             // A winner has been found. Call the game to a halt, 
@@ -245,7 +245,7 @@ contract Battleship is IntBattleshipStruct, MerkleProof {
             BattleModel memory battle = dataStorage.getBattle(_battleId);
             battle.isCompleted = true;
             battle.winner = _playerAddress;
-            dataStorage.updateBattleById(_battleId, battle);
+            dataStorage.updateBattleById(_battleId, battle, GamePhase.Gameover);
             emit WinnerDetected(_battleId, _playerAddress, _opponentAddress);
         }
         
