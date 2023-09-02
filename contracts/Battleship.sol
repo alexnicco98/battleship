@@ -14,19 +14,16 @@ pragma abicoder v2;
 import "./interfaces/IntBattleshipStorage.sol";
 import "./interfaces/IntBattleshipStruct.sol";
 //import "./interfaces/IntBattleshipLogic.sol";
-import "./libs/MerkleProof.sol";
 //import "./libs/Strings.sol";
 
-contract Battleship is IntBattleshipStruct, MerkleProof {
+contract Battleship is IntBattleshipStruct {
 
     IntBattleshipStorage dataStorage;
-    MerkleProof merkleProof;
     //IntBattleshipLogic gameLogic;
     address owner;
 
     constructor(address _dataStorage) {
         dataStorage = IntBattleshipStorage(_dataStorage);
-        merkleProof = new MerkleProof();
         owner = dataStorage.msgSender();
         //gameLogic = IntBattleshipLogic(_gameLogicAddress);
     }

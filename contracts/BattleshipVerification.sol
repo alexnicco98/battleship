@@ -5,21 +5,18 @@ pragma abicoder v2;
 import "./interfaces/IntBattleshipStorage.sol";
 import "./interfaces/IntBattleshipStruct.sol";
 //import "./interfaces/IntBattleshipLogic.sol";
-import "./libs/MerkleProof.sol";
 
 /**
  * @title Battle Verification Contract
  * @dev Handles the verification of Battleship game results.
  */
-contract BattleshipVerification is IntBattleshipStruct, MerkleProof {
+contract BattleshipVerification is IntBattleshipStruct {
     IntBattleshipStorage dataStorage;
-    MerkleProof merkleProof;
     //IntBattleshipLogic gameLogic;
     address payable owner;
 
     constructor(address _dataStorage) { //, address _gameLogic
         dataStorage = IntBattleshipStorage(_dataStorage);
-        merkleProof = new MerkleProof();
         owner = payable(dataStorage.msgSender());
         //gameLogic = IntBattleshipLogic(_gameLogic);
     }
