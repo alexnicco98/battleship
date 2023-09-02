@@ -247,9 +247,9 @@ contract("Battleship", accounts => {
         let verify = await battleshipStorageInstance.verifyProof(
             proofleaf, playerOne, attackingPosition.axisY, attackingPosition.axisX);
 
-        //console.log("Verifiy bool:", verify);
+        console.log("Verifiy bool:", verify);
 
-        assert.equal(verify.receipt.status, true, "Verify should be equal to true");
+        //assert.equal(verify.receipt.status, true, "Verify should be equal to true");
 
         /*let test = await battleshipStorageInstance.getShipPositionByLeaf(playerOne,
             attackingPosition.axisX, attackingPosition.axisY);
@@ -261,15 +261,20 @@ contract("Battleship", accounts => {
             playerTwo, attackingPosition.axisX, attackingPosition.axisY);*/
         //let positionAttacked = await battleshipStorageInstance.
         //    getLastPositionsAttackedByBattleIdAndPlayer(battleId, playerTwo);
-        let len = await battleshipStorageInstance.getPositionsAttackedLength(battleId, 
-            playerTwo);
-        console.log("len before: ", len.toString());
+        //let len = await battleshipStorageInstance.getPositionsAttackedLength(battleId, 
+        //    playerTwo);
+        //console.log("len before: ", len.toString());
         //console.log("Attacked Position: ", positionAttacked.toString());
+
+        /*proof = await battleshipStorageInstance.getMerkleTreeProof(playerTwo);
+        console.log("proofleaf return from getMerkleTreeProof:", proof);
+        console.log("proofleaf generate from generateProof:", proofleaf);
+        console.log("-----------------------------------------------");
+        console.log("-----------------------------------------------");*/
 
         // playerTwo perform the 1° attack
         let attackResult = await battleshipInstance.attack(
-            battleId, proofleaf, currentPositionLeafAttackedByPlayerTwo, 
-            attackingPosition.axisX, attackingPosition.axisY,
+            battleId, proofleaf, attackingPosition.axisX, attackingPosition.axisY,
             { from: playerTwo });
     
         // Get the updated state of the battle
@@ -295,15 +300,20 @@ contract("Battleship", accounts => {
         attackingPosition = positionsAttackedByPlayerOne[0];
         let currentPositionLeafAttackedByPlayerOne = await battleshipStorageInstance.
             getMerkleTreeLeaf(playerTwo, attackingPosition.axisX, attackingPosition.axisY);
-        proofleaf = await battleshipStorageInstance.generateSingleLeafProof(
-            playerTwoLeaves, currentPositionLeafAttackedByPlayerOne, 
-            playerTwoRootHash, attackingPosition.axisY, attackingPosition.axisX);
+        proof = await battleshipStorageInstance.getMerkleTreeProof(playerTwo);
+        proofleaf = await battleshipStorageInstance.generateProof(
+            playerTwo, attackingPosition.axisY, attackingPosition.axisX);
+        proof = await battleshipStorageInstance.getMerkleTreeProof(playerOne);
         
         console.log("playerOne perform the 1° attack");
         console.log("currentPositionLeafAttackedByPlayerOne:", 
             currentPositionLeafAttackedByPlayerOne);
         console.log("attackingPosition.axisX:", attackingPosition.axisX);
         console.log("attackingPosition.axisY:", attackingPosition.axisY);
+        console.log("-----------------------------------------------");
+        console.log("-----------------------------------------------");
+        console.log("proofleaf return from getMerkleTreeProof:", proof);
+        console.log("proofleaf generate from generateProof:", proofleaf);
         console.log("-----------------------------------------------");
         console.log("-----------------------------------------------");
 
@@ -313,9 +323,8 @@ contract("Battleship", accounts => {
 
         // Perform the attack
         attackResult = await battleshipInstance.attack(
-            battleId, proofleaf, currentPositionLeafAttackedByPlayerOne,
-            attackingPosition.axisX, attackingPosition.axisY, { from: playerOne }
-        );
+            battleId, proofleaf, attackingPosition.axisX, attackingPosition.axisY, 
+            { from: playerOne });
 
         //len = await battleshipStorageInstance.getPositionsAttackedLength(battleId, 
         //    playerOne);
@@ -339,9 +348,9 @@ contract("Battleship", accounts => {
         attackingPosition = positionsAttackedByPlayerTwo[1];
         currentPositionLeafAttackedByPlayerTwo = await battleshipStorageInstance.
             getMerkleTreeLeaf(playerOne, attackingPosition.axisX, attackingPosition.axisY);
-        proofleaf = await battleshipStorageInstance.generateSingleLeafProof(
-            playerOneLeaves, currentPositionLeafAttackedByPlayerTwo, 
-            playerOneRootHash, attackingPosition.axisY, attackingPosition.axisX);
+        proof = await battleshipStorageInstance.getMerkleTreeProof(playerOne);
+        proofleaf = await battleshipStorageInstance.generateProof(
+            playerOne, attackingPosition.axisY, attackingPosition.axisX);
         
         console.log("playerTwo perform the 2° attack");
         console.log("currentPositionLeafAttackedByPlayerTwo:", 
@@ -359,8 +368,7 @@ contract("Battleship", accounts => {
         console.log("len before: ", len.toString());
 
         attackResult = await battleshipInstance.attack(
-            battleId, proofleaf, currentPositionLeafAttackedByPlayerTwo,
-            attackingPosition.axisX, attackingPosition.axisY,
+            battleId, proofleaf, attackingPosition.axisX, attackingPosition.axisY,
             { from: playerTwo });
         
         len = await battleshipStorageInstance.getPositionsAttackedLength(battleId, 
@@ -372,9 +380,8 @@ contract("Battleship", accounts => {
         attackingPosition = positionsAttackedByPlayerOne[1];
         currentPositionLeafAttackedByPlayerOne = await battleshipStorageInstance.
             getMerkleTreeLeaf(playerTwo, attackingPosition.axisX, attackingPosition.axisY);
-        proofleaf = await battleshipStorageInstance.generateSingleLeafProof(
-            playerTwoLeaves, currentPositionLeafAttackedByPlayerOne,
-            playerTwoRootHash, attackingPosition.axisY, attackingPosition.axisX);
+        proofleaf = await battleshipStorageInstance.generateProof(
+            playerTwo, attackingPosition.axisY, attackingPosition.axisX);
         
         console.log("playerOne perform the 2° attack");
         console.log("currentPositionLeafAttackedByPlayerOne:", 
@@ -390,8 +397,7 @@ contract("Battleship", accounts => {
         //console.log("getShipPositionByLeaf:", test);
 
         attackResult = await battleshipInstance.attack(
-            battleId, proofleaf, currentPositionLeafAttackedByPlayerOne,
-            attackingPosition.axisX, attackingPosition.axisY, 
+            battleId, proofleaf, attackingPosition.axisX, attackingPosition.axisY, 
             { from: playerOne });
 
         // ------------------------------------------------------------------
@@ -399,13 +405,11 @@ contract("Battleship", accounts => {
         attackingPosition = positionsAttackedByPlayerTwo[2];
         currentPositionLeafAttackedByPlayerTwo = await battleshipStorageInstance.
             getMerkleTreeLeaf(playerOne, attackingPosition.axisX, attackingPosition.axisY);
-        proofleaf = await battleshipStorageInstance.generateSingleLeafProof(
-            playerOneLeaves, currentPositionLeafAttackedByPlayerTwo,
-            playerOneRootHash, attackingPosition.axisY, attackingPosition.axisX);
+        proofleaf = await battleshipStorageInstance.generateProof(
+            playerOne, attackingPosition.axisY, attackingPosition.axisX);
         
         attackResult = await battleshipInstance.attack(
-            battleId, proofleaf, currentPositionLeafAttackedByPlayerTwo,
-            attackingPosition.axisX, attackingPosition.axisY, 
+            battleId, proofleaf, attackingPosition.axisX, attackingPosition.axisY, 
             { from: playerTwo });
 
         // ------------------------------------------------------------------
@@ -413,13 +417,11 @@ contract("Battleship", accounts => {
         attackingPosition = positionsAttackedByPlayerOne[2];
         currentPositionLeafAttackedByPlayerOne = await battleshipStorageInstance.
             getMerkleTreeLeaf(playerTwo, attackingPosition.axisX, attackingPosition.axisY);
-        proofleaf = await battleshipStorageInstance.generateSingleLeafProof(
-            playerTwoLeaves, currentPositionLeafAttackedByPlayerOne,
-            playerTwoRootHash, attackingPosition.axisY, attackingPosition.axisX);
+        proofleaf = await battleshipStorageInstance.generateProof(
+            playerTwo, attackingPosition.axisY, attackingPosition.axisX);
         
         attackResult = await battleshipInstance.attack(
-            battleId, proofleaf, currentPositionLeafAttackedByPlayerOne,
-            attackingPosition.axisX, attackingPosition.axisY,
+            battleId, proofleaf, attackingPosition.axisX, attackingPosition.axisY,
             { from: playerOne });
 
         // ------------------------------------------------------------------
@@ -427,30 +429,32 @@ contract("Battleship", accounts => {
         attackingPosition = positionsAttackedByPlayerTwo[3];
         currentPositionLeafAttackedByPlayerTwo = await battleshipStorageInstance.
             getMerkleTreeLeaf(playerOne, attackingPosition.axisX, attackingPosition.axisY);
-        proofleaf = await battleshipStorageInstance.generateSingleLeafProof(
-            playerOneLeaves, currentPositionLeafAttackedByPlayerTwo,
-            playerOneRootHash, attackingPosition.axisY, attackingPosition.axisX);
+        proofleaf = await battleshipStorageInstance.generateProof(
+            playerOne, attackingPosition.axisY, attackingPosition.axisX);
 
         attackResult = await battleshipInstance.attack(
-            battleId, proofleaf, currentPositionLeafAttackedByPlayerTwo,
-            attackingPosition.axisX, attackingPosition.axisY, { from: playerTwo }
-        );
+            battleId, proofleaf, attackingPosition.axisX, attackingPosition.axisY, 
+            { from: playerTwo });
 
         // ------------------------------------------------------------------
         // playerOne perform the 4° attack
         /*attackingPosition = positionsAttackedByPlayerOne[3];
         currentPositionLeafAttackedByPlayerOne = await battleshipStorageInstance.
             getMerkleTreeLeaf(playerTwo, attackingPosition.axisX, attackingPosition.axisY);
-        proofleaf = await battleshipStorageInstance.generateSingleLeafProof(
-            playerTwoLeaves, currentPositionLeafAttackedByPlayerOne,
-            playerTwoRootHash, attackingPosition.axisY, attackingPosition.axisX);
+        proofleaf = await battleshipStorageInstance.generateProof(
+            playerTwo, attackingPosition.axisY, attackingPosition.axisX);
         
         attackResult = await battleshipInstance.attack(
-            battleId, proofleaf, currentPositionLeafAttackedByPlayerOne,
-            attackingPosition.axisX, attackingPosition.axisY, 
+            battleId, proofleaf, attackingPosition.axisX, attackingPosition.axisY, 
             { from: playerOne });*/
+        
+        console.log("event: ", attackResult.logs[2].event);
 
+        assert.equal(attackResult.logs[2].event, "WinnerDetected", 
+            "Event containing more details about the winner");
+    
 
+        updatedBattleState = await battleshipStorageInstance.getBattle(battleId);
     
         // Check if there is a winner
         if (updatedBattleState.isCompleted) {

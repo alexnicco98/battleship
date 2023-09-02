@@ -354,11 +354,7 @@ contract BattleshipStorage is IntBattleshipStruct {
         return _root;
     }*/
 
-    /* knowing that I want a function generateProof(address _player, uint8 axisY, 
-    uint8 axisX) external view returns (bytes32[] memory) capable of return the 
-    list of hashes from the axisY and axisX that represent a specific leaf up 
-    to the root (inlcude only the hash node present in the upstream path 
-    (in this case with 16 leaf the tree have 4 level so 4 nodes)) */
+    /* this function is build for the specific case of 4 x 4 matrix */
     // calculate the Merkle proof from the specified _player, axisY, and axisX to the root
     function generateProof(address _player, uint8 axisY, uint8 axisX) 
     external view returns (bytes32[] memory) {
@@ -368,50 +364,87 @@ contract BattleshipStorage is IntBattleshipStruct {
         bytes32[] storage nodes = merkleNodes[_player];
         bytes32[] memory proof = new bytes32[](n);
 
-        // check this, should be the index of the first row 
-        // from the bottom inside the merkleNodes
-        uint256 index = (axisY * n + axisX); 
-        if (index != 0)
-            index = index / 2; 
-        uint256 offset = gridDimensionN * 2;
+        uint256 index = axisY * 2; 
+        if (axisX == 2)
+            index = index + 1; 
+        uint256 offset = n * 2; 
 
-        for (uint256 i = 0; i < n; i++) {
-            require(index < nodes.length, "Invalid index length");
-            proof[i] = nodes[index];
-
-            // Calculate the parent index
-            index = index + offset;
-            offset = offset / 2;
+        // first level have n * 2 elements
+        proof[0] = nodes[index];
+         // Calculate the parent index
+        if (index == 0 || index == 1) {
+            index = offset;
+        } else if (index == 2 || index == 3) {
+            index = offset + 1;
+        } else if (index == 4 || index == 5) {
+            index = offset + 2;
+        } else if (index == 6 || index == 7){
+            index = offset + 3;
         }
+        offset = offset + (offset / 2); 
+
+        // second level n elements
+        proof[1] = nodes[index];
+         // Calculate the parent index
+        if (index == 8 || index == 9) {
+            index = offset;
+        } else if (index == 10 || index == 11) {
+            index = offset + 1;
+        }
+
+        // third level n / 2 elements
+        proof[2] = nodes[index];
+
+        // the last level is always the root
+        proof[n - 1] = nodes[nodes.length - 1];
 
         return proof;
     }
 
     function verifyProof(bytes32[] memory _proof, address _player, uint8 axisY, uint8 axisX) 
-    external returns (bool) {
+    external view returns (bool) {
         uint256 n = gridDimensionN;
         require(axisY < n && axisX < n, "Invalid leaf coordinates");
 
         bytes32[] storage nodes = merkleNodes[_player];
 
-        uint256 index = (axisY * n + axisX); 
-        if (index != 0)
-            index = index / 2; 
-        uint256 offset = gridDimensionN * 2;
+        uint256 index = axisY * 2; 
+        if (axisX == 2)
+            index = index + 1; 
+        uint256 offset = n * 2; 
 
-        for (uint256 i = 0; i < n; i++) {
-            require(index < nodes.length && i < _proof.length, "Invalid index length");
-            /*string memory test = string(abi.encodePacked("Merged --> proof: ",
-                    bytes32ToString(_proof[i]), ", merkleNodes: ", 
-                    bytes32ToString(nodes[index])));
-            emit LogMessage(test);*/
-            if (_proof[i] != nodes[index])
-                return false;
-
-            // Calculate the parent index
-            index = index + offset;
-            offset = offset / 2;
+        // first level have n * 2 elements
+        if(_proof[0] != nodes[index])
+            return false;
+         // Calculate the parent index
+        if (index == 0 || index == 1) {
+            index = offset;
+        } else if (index == 2 || index == 3) {
+            index = offset + 1;
+        } else if (index == 4 || index == 5) {
+            index = offset + 2;
+        } else if (index == 6 || index == 7){
+            index = offset + 3;
         }
+        offset = offset + (offset / 2); 
+
+        // second level n elements
+        if(_proof[1] != nodes[index])
+            return false;
+         // Calculate the parent index
+        if (index == 8 || index == 9) {
+            index = offset;
+        } else if (index == 10 || index == 11) {
+            index = offset + 1;
+        }
+
+        // third level n / 2 elements
+        if(_proof[2] != nodes[index])
+            return false;
+
+        // the last level is always the root
+        if(_proof[n - 1] != nodes[nodes.length - 1])
+            return false;
 
         return true;
     }
@@ -801,9 +834,10 @@ contract BattleshipStorage is IntBattleshipStruct {
         return battles[_battleId];
     }
 
-    function updateBattleById(uint256 _battleId, BattleModel memory _battle) 
-    external onlyAuthorized returns (bool) {
+    function updateBattleById(uint256 _battleId, BattleModel memory _battle, 
+    GamePhase _gamePhase) external onlyAuthorized returns (bool) {
         _battle.updatedAt = block.timestamp;
+        _battle.gamePhase = _gamePhase;
         if (_battle.createdAt == 0) {
             _battle.createdAt = block.timestamp;
         }

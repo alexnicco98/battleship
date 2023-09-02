@@ -9,8 +9,8 @@ interface IntBattleshipStorage is IntBattleshipStruct {
     
     // Battle related functions
     function getBattle(uint _battleId) external view returns (BattleModel memory);
-    function updateBattleById(uint256 _battleId, BattleModel memory _battle) 
-        external returns (bool);
+    function updateBattleById(uint256 _battleId, BattleModel memory _battle, 
+        GamePhase _gamePhase) external returns (bool);
     function createNewGameId() external returns (uint256);
     
     // Game phase and lobby related functions
