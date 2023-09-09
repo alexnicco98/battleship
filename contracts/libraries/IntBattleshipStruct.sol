@@ -2,7 +2,7 @@
 pragma solidity >=0.8.0 <0.9.0;
 pragma experimental ABIEncoderV2;
 
-interface IntBattleshipStruct {
+library IntBattleshipStruct {
 
     enum GamePhase {None, Placement, Shooting, Gameover} // phase of the game
     enum ShipState {None, Intact, Damaged, Sunk } // condition of the ship

@@ -3,14 +3,14 @@ pragma solidity >=0.8.0 <0.9.0;
 pragma abicoder v2;
 
 import "./interfaces/IntBattleshipStorage.sol";
-import "./interfaces/IntBattleshipStruct.sol";
+import "./libraries/IntBattleshipStruct.sol";
 //import "./interfaces/IntBattleshipLogic.sol";
 
 /**
  * @title Battle Verification Contract
  * @dev Handles the verification of Battleship game results.
  */
-contract BattleshipVerification is IntBattleshipStruct {
+contract BattleshipVerification {
     IntBattleshipStorage dataStorage;
     //IntBattleshipLogic gameLogic;
     address payable owner;

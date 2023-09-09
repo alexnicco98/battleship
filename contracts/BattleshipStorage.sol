@@ -2,10 +2,10 @@
 pragma solidity >=0.8.0 <0.9.0;
 pragma abicoder v2;
 
-import "./interfaces/IntBattleshipStruct.sol";
+import "./libraries/IntBattleshipStruct.sol";
 //import "./interfaces/IntBattleshipLogic.sol";
 
-contract BattleshipStorage is IntBattleshipStruct {
+contract BattleshipStorage {
     
     // in the next development, should be a non-fixed variable that
     // the host player chose at the moment of creation of the game
@@ -28,9 +28,15 @@ contract BattleshipStorage is IntBattleshipStruct {
 
     address private battleShipContractAddress;
     //IntBattleshipLogic private gameLogic;
+    /*using IntBattleshipStruct for IntBattleshipStruct.BattleModel;
+    using IntBattleshipStruct for IntBattleshipStruct.PlayerModel;
+    using IntBattleshipStruct for IntBattleshipStruct.ShipPosition;
+    using IntBattleshipStruct for IntBattleshipStruct.GamePhaseDetail;
+    using IntBattleshipStruct for IntBattleshipStruct.LobbyModel;*/
 
-    mapping(uint256 => BattleModel) private battles;
-    mapping(address => PlayerModel) private players;
+
+    mapping(uint256 => IntBattleshipStruct.BattleModel) private battles;
+    mapping(address => IntBattleshipStruct.PlayerModel) private players;
     //mapping(address => bytes32[]) private proofs;
 
     //mapping(uint256 => mapping(address => mapping(uint256 => bytes32))) 
@@ -40,11 +46,11 @@ contract BattleshipStorage is IntBattleshipStruct {
     mapping(uint256 => mapping(address => bytes32)) private merkleTreeRoot;
     mapping(uint256 => address) private turn;
     mapping(uint256 => uint256) private lastPlayTime;
-    mapping(uint256 => mapping(address => ShipPosition[])) correctPositionsHit;
+    mapping(uint256 => mapping(address => IntBattleshipStruct.ShipPosition[])) correctPositionsHit;
     //mapping(uint256 => mapping(address => VerificationStatus)) private battleVerification;
     mapping(uint256 => mapping(address => bytes32)) private revealedLeaves;
-    mapping(address => LobbyModel) private lobbyMap;
-    mapping(GamePhase => GamePhaseDetail) private gamePhaseMapping;
+    mapping(address => IntBattleshipStruct.LobbyModel) private lobbyMap;
+    mapping(IntBattleshipStruct.GamePhase => IntBattleshipStruct.GamePhaseDetail) private gamePhaseMapping;
     //bytes32[] proof;
     //bytes32[] hashedDataSequence;
 
@@ -71,12 +77,15 @@ contract BattleshipStorage is IntBattleshipStruct {
         isTest = _isTest;
         //gameLogic = IntBattleshipLogic(_gameLogic);
 
-        gamePhaseMapping[GamePhase.Placement] = GamePhaseDetail(minStakingAmount, 
-            GamePhase.Placement, minTimeRequiredForPlayerToRespond);
-        gamePhaseMapping[GamePhase.Shooting] = GamePhaseDetail(minStakingAmount, 
-            GamePhase.Shooting, minTimeRequiredForPlayerToRespond);
-        gamePhaseMapping[GamePhase.Gameover] = GamePhaseDetail(minStakingAmount, 
-            GamePhase.Gameover, minTimeRequiredForPlayerToRespond);
+        gamePhaseMapping[IntBattleshipStruct.GamePhase.Placement] = 
+            IntBattleshipStruct.GamePhaseDetail(minStakingAmount, 
+            IntBattleshipStruct.GamePhase.Placement, minTimeRequiredForPlayerToRespond);
+        gamePhaseMapping[IntBattleshipStruct.GamePhase.Shooting] = 
+            IntBattleshipStruct.GamePhaseDetail(minStakingAmount, 
+            IntBattleshipStruct.GamePhase.Shooting, minTimeRequiredForPlayerToRespond);
+        gamePhaseMapping[IntBattleshipStruct.GamePhase.Gameover] = 
+            IntBattleshipStruct.GamePhaseDetail(minStakingAmount, 
+            IntBattleshipStruct.GamePhase.Gameover, minTimeRequiredForPlayerToRespond);
         initializeShipPositionMapping();
         gridSquare = gridDimensionN * gridDimensionN;
     }
@@ -101,16 +110,16 @@ contract BattleshipStorage is IntBattleshipStruct {
     }
 
     // generate a random ship direction
-    function generateRandomDirection() private view returns (ShipDirection) {
+    function generateRandomDirection() private view returns (IntBattleshipStruct.ShipDirection) {
         uint8 randomValue = uint8(uint256(keccak256(abi.encodePacked(block.timestamp, block.difficulty))) % 2);
         if (randomValue == 0) {
-            return ShipDirection.Vertical;
+            return IntBattleshipStruct.ShipDirection.Vertical;
         } else {
-            return ShipDirection.Horizontal;
+            return IntBattleshipStruct.ShipDirection.Horizontal;
         }
     }
 
-    function generateRandomAxis(uint8 shipLength, ShipDirection direction) 
+    function generateRandomAxis(uint8 shipLength, IntBattleshipStruct.ShipDirection direction) 
     private view returns (uint8 axisX, uint8 axisY) {
         uint8 gridSize = gridDimensionN; // Change this to your grid size
         require(gridSize > 0, "Grid size must be greater than 0");
@@ -120,12 +129,12 @@ contract BattleshipStorage is IntBattleshipStruct {
         axisY = uint8(uint256(keccak256(abi.encodePacked(block.timestamp, block.difficulty, msg.sender, shipLength, direction, axisX))) % gridSize);
 
         // Adjust X and Y coordinates based on ship length and direction to ensure the entire ship fits within the grid
-        if (direction == ShipDirection.Horizontal) {
+        if (direction == IntBattleshipStruct.ShipDirection.Horizontal) {
             // Check if the ship goes out of bounds on the X-axis
             while (axisX + shipLength > gridSize) {
                 axisX = uint8(uint256(keccak256(abi.encodePacked(block.timestamp, block.difficulty, msg.sender, shipLength, direction, axisX))) % gridSize);
             }
-        } else if (direction == ShipDirection.Vertical) {
+        } else if (direction == IntBattleshipStruct.ShipDirection.Vertical) {
             // Check if the ship goes out of bounds on the Y-axis
             while (axisY + shipLength > gridSize) {
                 axisY = uint8(uint256(keccak256(abi.encodePacked(block.timestamp, block.difficulty, msg.sender, shipLength, direction, axisY))) % gridSize);
@@ -474,12 +483,12 @@ contract BattleshipStorage is IntBattleshipStruct {
     // check if the ship position is valid or is overlapping w.r.t. another ship
     function areShipsNonOverlapping(uint8[] memory startXPositions, 
     uint8[] memory startYPositions, uint8[] memory shipLengths, 
-    ShipDirection[] memory directions) private view returns (bool) { 
+    IntBattleshipStruct.ShipDirection[] memory directions) private view returns (bool) { 
         uint8 nShips = uint8(shipLengths.length);
         uint8[] memory shipLen; 
         uint8[] memory staPosX; 
         uint8[] memory staPosY; 
-        ShipDirection[] memory dir= directions;
+        IntBattleshipStruct.ShipDirection[] memory dir= directions;
 
         {
             shipLen = shipLengths;
@@ -491,7 +500,7 @@ contract BattleshipStorage is IntBattleshipStruct {
             uint8 startX = staPosX[i];
             uint8 startY = staPosY[i];
             uint8 shipLength = shipLen[i];
-            ShipDirection direction = dir[i];
+            IntBattleshipStruct.ShipDirection direction = dir[i];
 
             for (uint8 j = 0; j < shipLength; j++) {
                 uint8 x = getShipPositionX(startX, j, direction);
@@ -510,14 +519,14 @@ contract BattleshipStorage is IntBattleshipStruct {
         return true;
     }
 
-    function getShipPositionX(uint8 startX, uint8 j, ShipDirection direction) 
+    function getShipPositionX(uint8 startX, uint8 j, IntBattleshipStruct.ShipDirection direction) 
     private pure returns (uint8) {
-        return direction == ShipDirection.Horizontal ? startX + j : startX;
+        return direction == IntBattleshipStruct.ShipDirection.Horizontal ? startX + j : startX;
     }
 
-    function getShipPositionY(uint8 startY, uint8 j, ShipDirection direction) 
+    function getShipPositionY(uint8 startY, uint8 j, IntBattleshipStruct.ShipDirection direction) 
     private pure returns (uint8) {
-        return direction == ShipDirection.Vertical ? startY + j : startY;
+        return direction == IntBattleshipStruct.ShipDirection.Vertical ? startY + j : startY;
     }
 
     function isWithinGrid(uint8 x, uint8 y, uint8 gridSize) private pure returns (bool) {
@@ -526,7 +535,7 @@ contract BattleshipStorage is IntBattleshipStruct {
 
     function doesOverlap(uint8 shipIndex, uint8[] memory startXPositions,
     uint8[] memory startYPositions, uint8[] memory shipLengths, 
-    ShipDirection[] memory directions) private pure returns (bool) {
+    IntBattleshipStruct.ShipDirection[] memory directions) private pure returns (bool) {
         for (uint8 k = 0; k < shipIndex; k++) {
             if (doShipsOverlap(shipIndex, k, startXPositions, startYPositions, 
             shipLengths, directions)) {
@@ -538,17 +547,17 @@ contract BattleshipStorage is IntBattleshipStruct {
 
     function doShipsOverlap(uint8 shipIndexA, uint8 shipIndexB,
     uint8[] memory startXPositions, uint8[] memory startYPositions, 
-    uint8[] memory shipLengths, ShipDirection[] memory directions) 
+    uint8[] memory shipLengths, IntBattleshipStruct.ShipDirection[] memory directions) 
     private pure returns (bool) {
         uint8 startX_A = startXPositions[shipIndexA];
         uint8 startY_A = startYPositions[shipIndexA];
         uint8 shipLength_A = shipLengths[shipIndexA];
-        ShipDirection direction_A = directions[shipIndexA];
+        IntBattleshipStruct.ShipDirection direction_A = directions[shipIndexA];
 
         uint8 startX_B = startXPositions[shipIndexB];
         uint8 startY_B = startYPositions[shipIndexB];
         uint8 shipLength_B = shipLengths[shipIndexB];
-        ShipDirection direction_B = directions[shipIndexB];
+        IntBattleshipStruct.ShipDirection direction_B = directions[shipIndexB];
 
         for (uint8 m = 0; m < shipLength_A; m++) {
             uint8 x_A = getShipPositionX(startX_A, m, direction_A);
@@ -574,13 +583,13 @@ contract BattleshipStorage is IntBattleshipStruct {
     }
 
     function getShipPosition(address _address, uint8 _index) 
-    external view returns (ShipPosition memory) {
+    external view returns (IntBattleshipStruct.ShipPosition memory) {
         return players[_address].shipPositions[_index];
     }
 
     function getShipPositionByAxis(address _player, uint8 _axisX, uint8 _axisY) 
-    public view returns (ShipPosition memory) {
-        PlayerModel storage player = players[_player];
+    public view returns (IntBattleshipStruct.ShipPosition memory) {
+        IntBattleshipStruct.PlayerModel storage player = players[_player];
         require(player.leafIndexX.length == sumOfShipSizes && player.leafIndexY.length
             == sumOfShipSizes && player.leafIndexShipPosition.length == sumOfShipSizes,
             "Arrays length mismatch");
@@ -593,12 +602,12 @@ contract BattleshipStorage is IntBattleshipStruct {
         }
         
         // Ship not found, return a default ShipPosition
-        ShipPosition memory defaultShipPosition = ShipPosition({
+        IntBattleshipStruct.ShipPosition memory defaultShipPosition = IntBattleshipStruct.ShipPosition({
                 shipLength: 0,
-                direction: ShipDirection.None,
+                direction: IntBattleshipStruct.ShipDirection.None,
                 axisX: 0,
                 axisY: 0,
-                state: ShipState.None
+                state: IntBattleshipStruct.ShipState.None
             });
         return defaultShipPosition;
     }
@@ -612,12 +621,12 @@ contract BattleshipStorage is IntBattleshipStruct {
         return players[_address].leaves;
     }
 
-    function convertAndEmitShipPositions(ShipPosition[] memory shipPositions) 
+    function convertAndEmitShipPositions(IntBattleshipStruct.ShipPosition[] memory shipPositions) 
     public {
         string[] memory shipPositionStrings = new string[](shipPositions.length);
 
         for (uint256 i = 0; i < shipPositions.length; i++) {
-            ShipPosition memory position = shipPositions[i];
+            IntBattleshipStruct.ShipPosition memory position = shipPositions[i];
             string memory positionString = string(
                 abi.encodePacked(
                     "Ship ", 
@@ -655,11 +664,11 @@ contract BattleshipStorage is IntBattleshipStruct {
         return string(buffer);
     }
 
-    function shipDirectionToString(ShipDirection direction) 
+    function shipDirectionToString(IntBattleshipStruct.ShipDirection direction) 
     internal pure returns (string memory) {
-        if (direction == ShipDirection.Horizontal) {
+        if (direction == IntBattleshipStruct.ShipDirection.Horizontal) {
             return "Horizontal";
-        } else if (direction == ShipDirection.Vertical) {
+        } else if (direction == IntBattleshipStruct.ShipDirection.Vertical) {
             return "Vertical";
         } else {
             return "Unknown";
@@ -670,20 +679,20 @@ contract BattleshipStorage is IntBattleshipStruct {
         considering just calculate the root and every attack phase
         return the position leaf position hit by the attack**/
     function setShipPositions(uint8[] memory shipLengths, uint8[] memory axisXs,
-    uint8[] memory axisYs, ShipDirection[] memory directions, address player
+    uint8[] memory axisYs, IntBattleshipStruct.ShipDirection[] memory directions, address player
     ) external {
         require(shipLengths.length == axisXs.length && axisXs.length == axisYs.length && 
             axisYs.length == directions.length, "Arrays length mismatch");
 
-        PlayerModel storage playerModel = players[player];
+        IntBattleshipStruct.PlayerModel storage playerModel = players[player];
 
         for (uint8 i = 0; i < numShips; i++) {
-            ShipPosition memory newShip = ShipPosition({
+            IntBattleshipStruct.ShipPosition memory newShip = IntBattleshipStruct.ShipPosition({
                 shipLength: shipLengths[i],
                 axisX: axisXs[i],
                 axisY: axisYs[i],
                 direction: directions[i],
-                state: ShipState.Intact
+                state: IntBattleshipStruct.ShipState.Intact
             });
             playerModel.shipPositions.push(newShip);
         }
@@ -691,7 +700,7 @@ contract BattleshipStorage is IntBattleshipStruct {
         transformShipPosition(playerModel, player);
     }
 
-    function transformShipPosition(PlayerModel storage _playerModel, address _player) 
+    function transformShipPosition(IntBattleshipStruct.PlayerModel storage _playerModel, address _player) 
     internal {
         bool[][] memory shipMatrix = new bool[][](gridDimensionN);
 
@@ -703,14 +712,14 @@ contract BattleshipStorage is IntBattleshipStruct {
         }
 
         for (uint8 i = 0; i < numShips; i++) {
-            ShipPosition memory ship = _playerModel.shipPositions[i];
+            IntBattleshipStruct.ShipPosition memory ship = _playerModel.shipPositions[i];
 
             uint8 shipLength = ship.shipLength;
             uint8 axisX = ship.axisX;
             uint8 axisY = ship.axisY;
-            ShipDirection direction = ship.direction;
+            IntBattleshipStruct.ShipDirection direction = ship.direction;
 
-            if (direction == ShipDirection.Horizontal) {
+            if (direction == IntBattleshipStruct.ShipDirection.Horizontal) {
                 if (axisX + shipLength > gridDimensionN) {
                     revert("Ship would go out of bounds horizontally");
                 }
@@ -719,7 +728,7 @@ contract BattleshipStorage is IntBattleshipStruct {
                     shipMatrix[axisY][j] = true;
                     updatePlayerLeafIndexes(_playerModel, j, axisY, i);
                 }
-            } else if (direction == ShipDirection.Vertical) {
+            } else if (direction == IntBattleshipStruct.ShipDirection.Vertical) {
                 if (axisY + shipLength > gridDimensionN) {
                     revert("Ship would go out of bounds vertically");
                 }
@@ -741,7 +750,7 @@ contract BattleshipStorage is IntBattleshipStruct {
         }
     }
 
-    function updatePlayerLeafIndexes(PlayerModel storage player, uint8 leafIndexX,
+    function updatePlayerLeafIndexes(IntBattleshipStruct.PlayerModel storage player, uint8 leafIndexX,
     uint8 leafIndexY,uint8 leafIndexShipPosition) internal {
         player.leafIndexX.push(leafIndexX);
         player.leafIndexY.push(leafIndexY);
@@ -830,12 +839,12 @@ contract BattleshipStorage is IntBattleshipStruct {
 
     // Battle related functions
 
-    function getBattle(uint256 _battleId) public view returns (BattleModel memory) {
+    function getBattle(uint256 _battleId) public view returns (IntBattleshipStruct.BattleModel memory) {
         return battles[_battleId];
     }
 
-    function updateBattleById(uint256 _battleId, BattleModel memory _battle, 
-    GamePhase _gamePhase) external onlyAuthorized returns (bool) {
+    function updateBattleById(uint256 _battleId, IntBattleshipStruct.BattleModel memory _battle, 
+    IntBattleshipStruct.GamePhase _gamePhase) external onlyAuthorized returns (bool) {
         _battle.updatedAt = block.timestamp;
         _battle.gamePhase = _gamePhase;
         if (_battle.createdAt == 0) {
@@ -852,7 +861,8 @@ contract BattleshipStorage is IntBattleshipStruct {
 
     // Player related functions
 
-    function getPlayerByAddress(address _address) public view returns (PlayerModel memory) {
+    function getPlayerByAddress(address _address) 
+    public view returns (IntBattleshipStruct.PlayerModel memory) {
         return players[_address];
     }
 
@@ -878,22 +888,22 @@ contract BattleshipStorage is IntBattleshipStruct {
 
     // Game mode and lobby related functions
 
-    function getGamePhaseDetails(GamePhase _gamePhase) 
-    external view returns (GamePhaseDetail memory) {
+    function getGamePhaseDetails(IntBattleshipStruct.GamePhase _gamePhase) 
+    external view returns (IntBattleshipStruct.GamePhaseDetail memory) {
         return gamePhaseMapping[_gamePhase];
     }
 
-    function setGamePhaseDetails(GamePhase _gamePhase, GamePhaseDetail memory _detail) 
+    function setGamePhaseDetails(IntBattleshipStruct.GamePhase _gamePhase, IntBattleshipStruct.GamePhaseDetail memory _detail) 
     external returns (bool) {
         gamePhaseMapping[_gamePhase] = _detail;
         return true;
     }
 
-    function getLobbyByAddress(address _player) external view returns (LobbyModel memory) {
+    function getLobbyByAddress(address _player) external view returns (IntBattleshipStruct.LobbyModel memory) {
         return lobbyMap[_player];
     }
 
-    function setLobbyByAddress(address _player, LobbyModel memory _lobbyModel) 
+    function setLobbyByAddress(address _player, IntBattleshipStruct.LobbyModel memory _lobbyModel) 
     external returns (bool) {
         lobbyMap[_player] = _lobbyModel;
         return true;
@@ -978,12 +988,12 @@ contract BattleshipStorage is IntBattleshipStruct {
     // Correct positions hit related functions
 
     function getCorrectPositionsHitByBattleIdAndPlayer(uint256 _battleId, address _player) 
-    external view returns (ShipPosition[] memory) {
+    external view returns (IntBattleshipStruct.ShipPosition[] memory) {
         return correctPositionsHit[_battleId][_player];
     }
 
     function setCorrectPositionsHitByBattleIdAndPlayer(uint256 _battleId, address _player, 
-    ShipPosition memory _positions) external returns (bool) {
+    IntBattleshipStruct.ShipPosition memory _positions) external returns (bool) {
         correctPositionsHit[_battleId][_player].push(_positions);
         return true;
     }

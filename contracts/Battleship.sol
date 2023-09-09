@@ -12,11 +12,11 @@ pragma abicoder v2;
     **/
 
 import "./interfaces/IntBattleshipStorage.sol";
-import "./interfaces/IntBattleshipStruct.sol";
+import "./libraries/IntBattleshipStruct.sol";
 //import "./interfaces/IntBattleshipLogic.sol";
 //import "./libs/Strings.sol";
 
-contract Battleship is IntBattleshipStruct {
+contract Battleship {
 
     IntBattleshipStorage dataStorage;
     //IntBattleshipLogic gameLogic;
@@ -28,11 +28,11 @@ contract Battleship is IntBattleshipStruct {
         //gameLogic = IntBattleshipLogic(_gameLogicAddress);
     }
     
-    event PlayerJoinedLobby(address _playerAddress, GamePhase _gamePhase);
+    event PlayerJoinedLobby(address _playerAddress, IntBattleshipStruct.GamePhase _gamePhase);
     event PlayerCreatedLobby(address _playerAddress);
-    event BattleStarted(uint256 _battleId, GamePhase _gamePhase, address[2] _players);
+    event BattleStarted(uint256 _battleId, IntBattleshipStruct.GamePhase _gamePhase, address[2] _players);
     event ConfirmShotStatus(uint256 _battleId, address _confirmingPlayer, 
-        address _opponent, uint8[2] _position, ShipPosition _shipDetected);
+        address _opponent, uint8[2] _position, IntBattleshipStruct.ShipPosition _shipDetected);
     event AttackLaunched(uint256 _battleId, address _launchingPlayer, 
         address _opponent, uint8 _attackingPositionX, uint8 _attackingPositionY);
     event WinnerDetected(uint256 _battleId, address _winnerAddress, 
@@ -45,9 +45,9 @@ contract Battleship is IntBattleshipStruct {
     event LogMessage(string _message);
     event shipsToString(string[] _ship);
 
-    function emitStackValueFromGamePhase(GamePhase _gamePhase) public {
+    function emitStackValueFromGamePhase(IntBattleshipStruct.GamePhase _gamePhase) public {
         //get the Game phase
-        GamePhaseDetail memory gamePhaseDetail = dataStorage.getGamePhaseDetails(_gamePhase);
+        IntBattleshipStruct.GamePhaseDetail memory gamePhaseDetail = dataStorage.getGamePhaseDetails(_gamePhase);
         
          // Emit the stake value
         emit StakeValue(gamePhaseDetail.stake);
@@ -57,14 +57,14 @@ contract Battleship is IntBattleshipStruct {
         emit StakeValue(msg.value);
     }
 
-    function createLobby(GamePhase _gamePhase, bytes32 _root) 
+    function createLobby(IntBattleshipStruct.GamePhase _gamePhase, bytes32 _root) 
     public payable returns (uint256){
         uint deposit = msg.value;
         address player = msg.sender;
         uint256 battleId = 0;
 
         // get the Game phase
-        GamePhaseDetail memory gamePhaseDetail = dataStorage.getGamePhaseDetails(_gamePhase);
+        IntBattleshipStruct.GamePhaseDetail memory gamePhaseDetail = dataStorage.getGamePhaseDetails(_gamePhase);
         
         // Require that the amount of money sent in greater or 
         // equal to the required amount for this mode.
@@ -72,7 +72,7 @@ contract Battleship is IntBattleshipStruct {
         "The amount of money deposited must be equal to the staking amount for this game mode");
         
         //Get the Lobby
-        LobbyModel memory lobby = LobbyModel({isOccupied: true, occupant: player,
+        IntBattleshipStruct.LobbyModel memory lobby = IntBattleshipStruct.LobbyModel({isOccupied: true, occupant: player,
             playerOneRootHash: _root, playerTwoRootHash: 0x00
         });
 
@@ -83,14 +83,14 @@ contract Battleship is IntBattleshipStruct {
         return battleId;
     }
 
-    function joinLobby(address _creatorAddress, GamePhase _gamePhase, bytes32 _root) 
+    function joinLobby(address _creatorAddress, IntBattleshipStruct.GamePhase _gamePhase, bytes32 _root) 
     public payable returns (uint256){
         uint deposit = msg.value;
         address player = msg.sender;
         uint256 battleId = 0;
 
         //get the Game phase
-        GamePhaseDetail memory gamePhaseDetail = dataStorage.getGamePhaseDetails(_gamePhase);
+        IntBattleshipStruct.GamePhaseDetail memory gamePhaseDetail = dataStorage.getGamePhaseDetails(_gamePhase);
 
         // Require that the amount of money sent in greater or 
         // equal to the required amount for this mode.
@@ -98,7 +98,7 @@ contract Battleship is IntBattleshipStruct {
         "The amount of money deposited must be equal to the staking amount for this game mode");
 
         //Get the Lobby 
-        LobbyModel memory lobby = dataStorage.getLobbyByAddress(_creatorAddress);
+        IntBattleshipStruct.LobbyModel memory lobby = dataStorage.getLobbyByAddress(_creatorAddress);
 
         //require that the sender is not already in the lobby
         require(lobby.occupant != player, "The occupant can not join in as the player");
@@ -109,8 +109,8 @@ contract Battleship is IntBattleshipStruct {
         //Start a new match
         uint totalStake = gamePhaseDetail.stake * 2;
         battleId = dataStorage.createNewGameId();
-        BattleModel memory battle  = BattleModel(totalStake, lobby.occupant, player, 
-            block.timestamp, player, false, address(0), GamePhase.Shooting, 
+        IntBattleshipStruct.BattleModel memory battle  = IntBattleshipStruct.BattleModel(totalStake, lobby.occupant, player, 
+            block.timestamp, player, false, address(0), IntBattleshipStruct.GamePhase.Shooting, 
             gamePhaseDetail.maxTimeForPlayerToPlay, false, 0, block.timestamp, 
             block.timestamp, false, false);       
         
@@ -131,9 +131,9 @@ contract Battleship is IntBattleshipStruct {
         // Update the lobby
         lobby.playerTwoRootHash = _root;
         dataStorage.setLobbyByAddress(_creatorAddress, lobby);
-        dataStorage.updateBattleById(battleId, battle, GamePhase.Shooting);
+        dataStorage.updateBattleById(battleId, battle, IntBattleshipStruct.GamePhase.Shooting);
         
-        emit BattleStarted(battleId, GamePhase.Shooting, [battle.host, battle.client]);
+        emit BattleStarted(battleId, IntBattleshipStruct.GamePhase.Shooting, [battle.host, battle.client]);
         
         return battleId;
     }
@@ -141,8 +141,8 @@ contract Battleship is IntBattleshipStruct {
     function attack(uint256 _battleId, bytes32[] memory _proofLeaf,
     uint8 _attackingPositionX, uint8 _attackingPositionY) public returns (bool){
         
-        BattleModel memory battle = dataStorage.getBattle(_battleId);
-        GamePhaseDetail memory gamePhaseDetail = dataStorage.getGamePhaseDetails(
+        IntBattleshipStruct.BattleModel memory battle = dataStorage.getBattle(_battleId);
+        IntBattleshipStruct.GamePhaseDetail memory gamePhaseDetail = dataStorage.getGamePhaseDetails(
             battle.gamePhase);
         address player = msg.sender;
         address opponent = battle.host == player ? battle.client : battle.host;
@@ -199,7 +199,7 @@ contract Battleship is IntBattleshipStruct {
         dataStorage.setTurnByBattleId(_battleId, opponent);
 
         // Get the status of the position hit
-        ShipPosition memory shipPosition = dataStorage.getShipPositionByAxis(opponent, 
+        IntBattleshipStruct.ShipPosition memory shipPosition = dataStorage.getShipPositionByAxis(opponent, 
             _attackingPositionX, _attackingPositionY);
 
         // Emit an event containing more details about the last shot fired
@@ -223,14 +223,14 @@ contract Battleship is IntBattleshipStruct {
     
     //Checks if there is a winner in the game.
     function checkForWinner(uint _battleId, address _playerAddress, address _opponentAddress, 
-    ShipPosition memory _shipPosition) private returns (bool){
+    IntBattleshipStruct.ShipPosition memory _shipPosition) private returns (bool){
         //Add to the last position hit
-        if(_shipPosition.state != ShipState.None) dataStorage.
+        if(_shipPosition.state != IntBattleshipStruct.ShipState.None) dataStorage.
             setCorrectPositionsHitByBattleIdAndPlayer(_battleId, 
             _playerAddress, _shipPosition);
         
         //Get The total positions hit
-        ShipPosition[] memory correctPositionsHit = dataStorage.
+        IntBattleshipStruct.ShipPosition[] memory correctPositionsHit = dataStorage.
         getCorrectPositionsHitByBattleIdAndPlayer(_battleId, _playerAddress);
 
         // DEBUG
@@ -239,10 +239,10 @@ contract Battleship is IntBattleshipStruct {
         if(correctPositionsHit.length == dataStorage.getSumOfShipSize()){
             // A winner has been found. Call the game to a halt, 
             // and let the verification process begin.
-            BattleModel memory battle = dataStorage.getBattle(_battleId);
+            IntBattleshipStruct.BattleModel memory battle = dataStorage.getBattle(_battleId);
             battle.isCompleted = true;
             battle.winner = _playerAddress;
-            dataStorage.updateBattleById(_battleId, battle, GamePhase.Gameover);
+            dataStorage.updateBattleById(_battleId, battle, IntBattleshipStruct.GamePhase.Gameover);
             emit WinnerDetected(_battleId, _playerAddress, _opponentAddress);
         }
         
@@ -252,9 +252,9 @@ contract Battleship is IntBattleshipStruct {
     
     function collectReward(uint _battleId) public returns (bool)
     {
-        BattleModel memory battle = dataStorage.getBattle(_battleId);
+        IntBattleshipStruct.BattleModel memory battle = dataStorage.getBattle(_battleId);
         address playerAddress = dataStorage.msgSender();
-        GamePhaseDetail memory gamePhaseDetail = dataStorage.getGamePhaseDetails(battle.gamePhase);
+        IntBattleshipStruct.GamePhaseDetail memory gamePhaseDetail = dataStorage.getGamePhaseDetails(battle.gamePhase);
         address transactionOfficer = address(dataStorage.getTransactionOfficer());
 
         require(battle.isCompleted, "Battle is not yet completed");
@@ -290,7 +290,7 @@ contract Battleship is IntBattleshipStruct {
         emit LogMessage(message);
     }
 
-    function lobbyModelToString(LobbyModel memory lobby) internal pure returns (string memory) {
+    function lobbyModelToString(IntBattleshipStruct.LobbyModel memory lobby) internal pure returns (string memory) {
         string memory result;
 
         // Convert boolean to string
@@ -308,11 +308,11 @@ contract Battleship is IntBattleshipStruct {
         return result;
     }
 
-    function convertAndEmitShipPositions(ShipPosition[] memory shipPositions) public {
+    function convertAndEmitShipPositions(IntBattleshipStruct.ShipPosition[] memory shipPositions) public {
         string[] memory shipPositionStrings = new string[](shipPositions.length);
 
         for (uint256 i = 0; i < shipPositions.length; i++) {
-            ShipPosition memory position = shipPositions[i];
+            IntBattleshipStruct.ShipPosition memory position = shipPositions[i];
             string memory positionString = string(
                 abi.encodePacked(
                     "Ship ", 
@@ -350,10 +350,10 @@ contract Battleship is IntBattleshipStruct {
         return string(buffer);
     }
 
-    function shipDirectionToString(ShipDirection direction) internal pure returns (string memory) {
-        if (direction == ShipDirection.Horizontal) {
+    function shipDirectionToString(IntBattleshipStruct.ShipDirection direction) internal pure returns (string memory) {
+        if (direction == IntBattleshipStruct.ShipDirection.Horizontal) {
             return "Horizontal";
-        } else if (direction == ShipDirection.Vertical) {
+        } else if (direction == IntBattleshipStruct.ShipDirection.Vertical) {
             return "Vertical";
         } else {
             return "Unknown";

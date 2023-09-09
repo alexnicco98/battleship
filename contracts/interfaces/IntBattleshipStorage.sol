@@ -2,32 +2,33 @@
 pragma solidity >=0.8.0 <0.9.0;
 pragma abicoder v2;
 
-import "./IntBattleshipStruct.sol";
+import "../libraries/IntBattleshipStruct.sol";
 //import "./IntBattleshipLogic.sol";
 
-interface IntBattleshipStorage is IntBattleshipStruct {
+interface IntBattleshipStorage {
     
     // Battle related functions
-    function getBattle(uint _battleId) external view returns (BattleModel memory);
-    function updateBattleById(uint256 _battleId, BattleModel memory _battle, 
-        GamePhase _gamePhase) external returns (bool);
+    function getBattle(uint _battleId) external view returns (IntBattleshipStruct.BattleModel memory);
+    function updateBattleById(uint256 _battleId, IntBattleshipStruct.BattleModel memory _battle, 
+        IntBattleshipStruct.GamePhase _gamePhase) external returns (bool);
     function createNewGameId() external returns (uint256);
     
     // Game phase and lobby related functions
     
     //function setGameLogicAddress(address _gameLogicAddress) 
         //external returns (bool);
-    function getGamePhaseDetails(GamePhase _gamePhase) 
-        external view returns (GamePhaseDetail memory);
-    function setGamePhaseDetails(GamePhase _gamePhase, 
-        GamePhaseDetail memory _detail) external returns (bool);
+    function getGamePhaseDetails(IntBattleshipStruct.GamePhase _gamePhase) 
+        external view returns (IntBattleshipStruct.GamePhaseDetail memory);
+    function setGamePhaseDetails(IntBattleshipStruct.GamePhase _gamePhase, 
+        IntBattleshipStruct.GamePhaseDetail memory _detail) external returns (bool);
     function getLobbyByAddress(address _player) 
-        external view returns (LobbyModel memory);
-    function setLobbyByAddress(address _player, LobbyModel memory _lobby) 
+        external view returns (IntBattleshipStruct.LobbyModel memory);
+    function setLobbyByAddress(address _player, IntBattleshipStruct.LobbyModel memory _lobby) 
         external returns (bool);
     
     // Player related functions
-    function getPlayerByAddress(address _address) external view returns (PlayerModel memory);
+    function getPlayerByAddress(address _address) external view returns (
+        IntBattleshipStruct.PlayerModel memory);
     function getContractOwner() external view returns (address);
     function setBattleshipContractAddress(address _address) external returns (bool);
     //function updatePlayerByAddress(address _address, PlayerModel memory _player) 
@@ -74,9 +75,9 @@ interface IntBattleshipStorage is IntBattleshipStruct {
     // Correct positions hit related functions
 
     function getCorrectPositionsHitByBattleIdAndPlayer(uint256 _battleId, 
-        address _player) external view returns (ShipPosition[] memory);
+        address _player) external view returns (IntBattleshipStruct.ShipPosition[] memory);
     function setCorrectPositionsHitByBattleIdAndPlayer(uint256 _battleId, 
-        address _player, ShipPosition memory _shipPosition) 
+        address _player, IntBattleshipStruct.ShipPosition memory _shipPosition) 
         external returns (bool);
     
     // Battle verification related functions
@@ -122,11 +123,11 @@ interface IntBattleshipStorage is IntBattleshipStruct {
 
     // get a single ship position inside the struct PlayerModel
     function getShipPosition(uint8 _positionKey) 
-        external view returns (ShipPosition memory);
+        external view returns (IntBattleshipStruct.ShipPosition memory);
 
     // get a single ship position knowing the axis
     function getShipPositionByAxis(address _player,  uint8 _axisX, uint8 _axisY) 
-        external view returns (ShipPosition memory);
+        external view returns (IntBattleshipStruct.ShipPosition memory);
 
     // get a single Merkle Tree leaf inside the struct PlayerModel
     function getMerkleTreeLeaf(address _address, uint8 _axisX, uint8 _axisY) 
@@ -138,7 +139,7 @@ interface IntBattleshipStorage is IntBattleshipStruct {
 
     // set all the ship
     function setShipPositions(uint8[] memory _shipLengths, uint8[] memory _axisXs,
-        uint8[] memory _axisYs, ShipDirection[] memory _directions, 
+        uint8[] memory _axisYs, IntBattleshipStruct.ShipDirection[] memory _directions, 
         address _player) external;
 
     // create a Merkle tree leaves from the ship positions
