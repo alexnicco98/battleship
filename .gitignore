@@ -1,7 +1,8 @@
 node_modules
 
-# temporary file or to be completed
-src
+# interface
+src/*
+!src/App.js
 
 #configuration file
 *.json
