@@ -377,6 +377,20 @@ contract Battleship {
         return string(str);
     }
 
+    // functions to support the App.js
+    function getShipDirectionHor() public pure returns (IntBattleshipStruct.ShipDirection){
+       return IntBattleshipStruct.ShipDirection.Horizontal; 
+    }
+
+    function getShipDirectionVer() public pure returns (IntBattleshipStruct.ShipDirection){
+       return IntBattleshipStruct.ShipDirection.Vertical; 
+    }
+
+    function getGamePhasePlac()
+    public pure returns (IntBattleshipStruct.GamePhase){
+        return IntBattleshipStruct.GamePhase.Placement;
+    }
+
     /*function attack(uint _battleId, uint8 _previousPositionLeaf,
     bytes memory _previousPositionProof, uint8 _attackingPositionX,
     uint8 _attackingPositionY) public returns (bool) {
