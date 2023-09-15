@@ -129,6 +129,10 @@ interface IntBattleshipStorage {
     function getShipPositionByAxis(address _player,  uint8 _axisX, uint8 _axisY) 
         external view returns (IntBattleshipStruct.ShipPosition memory);
 
+    // return true if a ship has been hit, false otherwise
+    function isHit(address _player, uint8 _axisX, uint8 _axisY) 
+        external view returns (bool);
+
     // get a single Merkle Tree leaf inside the struct PlayerModel
     function getMerkleTreeLeaf(address _address, uint8 _axisX, uint8 _axisY) 
     external view returns (bytes32);

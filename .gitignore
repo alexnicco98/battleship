@@ -9,6 +9,7 @@ src/*
 server.js
 *.vscode
 *.github
+*.html
 
 #images
 *.png

@@ -3,7 +3,6 @@ pragma solidity >=0.8.0 <0.9.0;
 pragma abicoder v2;
 
 import "./libraries/IntBattleshipStruct.sol";
-//import "./interfaces/IntBattleshipLogic.sol";
 
 contract BattleshipStorage {
     
@@ -21,21 +20,10 @@ contract BattleshipStorage {
     uint256 private rewardCommissionRate;
     uint256 private cancelCommissionRate;
     bool private isTest;
-    //ShipPosition[] public shipPositionMapping;
     uint8 public sumOfShipSizes = 0;
     uint8 private gridSquare;
-
-
     address private battleShipContractAddress;
-    //IntBattleshipLogic private gameLogic;
-    /*using IntBattleshipStruct for IntBattleshipStruct.BattleModel;
-    using IntBattleshipStruct for IntBattleshipStruct.PlayerModel;
-    using IntBattleshipStruct for IntBattleshipStruct.ShipPosition;
-    using IntBattleshipStruct for IntBattleshipStruct.GamePhaseDetail;
-    using IntBattleshipStruct for IntBattleshipStruct.LobbyModel;*/
-
-
-    mapping(uint256 => IntBattleshipStruct.BattleModel) private battles;
+    mapping(uint256 => IntBattleshipStruct.BattleModel) public battles; // saved on the blockchain
     mapping(address => IntBattleshipStruct.PlayerModel) private players;
     //mapping(address => bytes32[]) private proofs;
 
@@ -49,8 +37,8 @@ contract BattleshipStorage {
     mapping(uint256 => mapping(address => IntBattleshipStruct.ShipPosition[])) correctPositionsHit;
     //mapping(uint256 => mapping(address => VerificationStatus)) private battleVerification;
     mapping(uint256 => mapping(address => bytes32)) private revealedLeaves;
-    mapping(address => IntBattleshipStruct.LobbyModel) private lobbyMap;
-    mapping(IntBattleshipStruct.GamePhase => IntBattleshipStruct.GamePhaseDetail) private gamePhaseMapping;
+    mapping(address => IntBattleshipStruct.LobbyModel) public lobbyMap; // saved on the blockchain
+    mapping(IntBattleshipStruct.GamePhase => IntBattleshipStruct.GamePhaseDetail) public gamePhaseMapping; // saved on the blockchain
     //bytes32[] proof;
     //bytes32[] hashedDataSequence;
 
@@ -610,6 +598,24 @@ contract BattleshipStorage {
                 state: IntBattleshipStruct.ShipState.None
             });
         return defaultShipPosition;
+    }
+
+    function isHit(address _player, uint8 _axisX, uint8 _axisY) 
+    external view returns (bool) {
+        IntBattleshipStruct.PlayerModel storage player = players[_player];
+        require(player.leafIndexX.length == sumOfShipSizes && player.leafIndexY.length
+            == sumOfShipSizes && player.leafIndexShipPosition.length == sumOfShipSizes,
+            "Arrays length mismatch");
+        
+        for (uint8 i = 0; i < sumOfShipSizes; i++) {
+            if (player.leafIndexX[i] == _axisX && player.leafIndexY[i] == _axisY) {
+                //emit LogMessage(uintToString(player.leafIndexShipPosition[i]));
+                return true;
+            }
+        }
+        
+        // Ship not found
+        return false;
     }
 
     function getMerkleTreeLeaf(address _address, uint8 _axisX, uint8 _axisY) 
