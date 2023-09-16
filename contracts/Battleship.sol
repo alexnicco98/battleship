@@ -13,19 +13,27 @@ pragma abicoder v2;
 
 import "./interfaces/IntBattleshipStorage.sol";
 import "./libraries/IntBattleshipStruct.sol";
-//import "./interfaces/IntBattleshipLogic.sol";
+//import "./BattleshipStorage.sol";
 //import "./libs/Strings.sol";
 
 contract Battleship {
 
     IntBattleshipStorage dataStorage;
+    address public currentPlayer;
     //IntBattleshipLogic gameLogic;
     address owner;
+    uint deposit;
 
     constructor(address _dataStorage) {
         dataStorage = IntBattleshipStorage(_dataStorage);
         owner = dataStorage.msgSender();
         //gameLogic = IntBattleshipLogic(_gameLogicAddress);
+    }
+
+    modifier onlyCurrentPlayer() {
+        string memory text = string(abi.encodePacked("Battleship: Only the current player can execute this transaction ", addressToString(msg.sender)));
+        require(msg.sender == currentPlayer, text);
+        _;
     }
     
     event PlayerJoinedLobby(address _playerAddress, IntBattleshipStruct.GamePhase _gamePhase);
@@ -59,7 +67,7 @@ contract Battleship {
 
     function createLobby(IntBattleshipStruct.GamePhase _gamePhase, bytes32 _root) 
     public payable returns (uint256){
-        uint deposit = msg.value;
+        deposit = msg.value;
         address player = msg.sender;
         uint256 battleId = 0;
 
@@ -85,7 +93,7 @@ contract Battleship {
 
     function joinLobby(address _creatorAddress, IntBattleshipStruct.GamePhase _gamePhase, bytes32 _root) 
     public payable returns (uint256){
-        uint deposit = msg.value;
+        uint _deposit = msg.value;
         address player = msg.sender;
         uint256 battleId = 0;
 
@@ -94,8 +102,10 @@ contract Battleship {
 
         // Require that the amount of money sent in greater or 
         // equal to the required amount for this mode.
-        require(deposit == gamePhaseDetail.stake, 
-        "The amount of money deposited must be equal to the staking amount for this game mode");
+        require(_deposit == gamePhaseDetail.stake, 
+            "The amount of money deposited must be equal to the staking amount for this game mode");
+        require(_deposit == deposit, 
+            "The amount of money deposited must be equal for both players");
 
         //Get the Lobby 
         IntBattleshipStruct.LobbyModel memory lobby = dataStorage.getLobbyByAddress(_creatorAddress);
@@ -132,6 +142,10 @@ contract Battleship {
         lobby.playerTwoRootHash = _root;
         dataStorage.setLobbyByAddress(_creatorAddress, lobby);
         dataStorage.updateBattleById(battleId, battle, IntBattleshipStruct.GamePhase.Shooting);
+
+        // Initialize the current player
+        currentPlayer = player;
+        //dataStorage.setCurrentPlayer(player);
         
         emit BattleStarted(battleId, IntBattleshipStruct.GamePhase.Shooting, [battle.host, battle.client]);
         
@@ -139,7 +153,7 @@ contract Battleship {
     }
 
     function attack(uint256 _battleId, bytes32[] memory _proofLeaf,
-    uint8 _attackingPositionX, uint8 _attackingPositionY) public returns (bool){
+    uint8 _attackingPositionX, uint8 _attackingPositionY) public onlyCurrentPlayer returns (bool){
         
         IntBattleshipStruct.BattleModel memory battle = dataStorage.getBattle(_battleId);
         IntBattleshipStruct.GamePhaseDetail memory gamePhaseDetail = dataStorage.getGamePhaseDetails(
@@ -193,10 +207,13 @@ contract Battleship {
 
         // Update the position index to the list of fired locations
         dataStorage.setPositionsAttackedByBattleIdAndPlayer(_battleId, player, 
-            _attackingPositionX, _attackingPositionY);
+            _attackingPositionX, _attackingPositionY, currentPlayer);
 
         // Update the turn
         dataStorage.setTurnByBattleId(_battleId, opponent);
+
+        // Switch turns
+        currentPlayer = opponent;
 
         // Get the status of the position hit
         IntBattleshipStruct.ShipPosition memory shipPosition = dataStorage.getShipPositionByAxis(opponent, 
@@ -248,43 +265,39 @@ contract Battleship {
         
         return true;
     }
-
     
-    function collectReward(uint _battleId) public returns (bool)
-    {
+    function collectReward(uint _battleId) public returns (bool){
         IntBattleshipStruct.BattleModel memory battle = dataStorage.getBattle(_battleId);
-        address playerAddress = dataStorage.msgSender();
+        address playerAddress = msg.sender;
         IntBattleshipStruct.GamePhaseDetail memory gamePhaseDetail = dataStorage.getGamePhaseDetails(battle.gamePhase);
-        address transactionOfficer = address(dataStorage.getTransactionOfficer());
+        //address transactionOfficer = address(dataStorage.getTransactionOfficer());
 
         require(battle.isCompleted, "Battle is not yet completed");
         require(battle.winner == playerAddress, 
             "Only the suspected winner of the battle can access this function");
-        require(battle.leafVerificationPassed, "Leaf verification has to be passed first");
-        require(battle.shipPositionVerificationPassed, 
-            "Ship Positions Verification has to be passed");
+        //require(battle.leafVerificationPassed, "Leaf verification has to be passed first");
+        //require(battle.shipPositionVerificationPassed, 
+        //   "Ship Positions Verification has to be passed");
         
         
          //Get the total reward.
         uint totalReward = gamePhaseDetail.stake *  2;
-        uint transactionCost = 0;
-        uint commission = 0;
-        uint actualReward = totalReward - transactionCost - commission;
+        //uint transactionCost = 0;
+        //uint commission = 0;
+        //uint actualReward = totalReward - transactionCost - commission;
         
-        transfer(playerAddress, actualReward);
-        transfer(transactionOfficer, transactionCost);
-        transfer(owner, commission);
+        transfer(playerAddress, totalReward);
+        //transfer(transactionOfficer, transactionCost);
+        //transfer(owner, commission);
         
         return true;
     }
-    
   
-    function transfer(address _recipient, uint _amount) private 
-     {
+    function transfer(address _recipient, uint _amount) private {
          (bool success, ) = _recipient.call{value : _amount}("");
          require(success, "Transfer failed.");
          emit Transfer(_recipient, _amount, address(this).balance);
-     }
+    }
 
     function logMyMessage(string memory message) public {
         emit LogMessage(message);

@@ -69,8 +69,11 @@ interface IntBattleshipStorage {
     function getLastPositionsAttackedByBattleIdAndPlayer(uint256 _battleId, 
         address _player) external view returns (uint8[2] memory);
     function setPositionsAttackedByBattleIdAndPlayer(uint256 _battleId, 
-        address _player, uint8 attackingPositionX, uint8 attackingPositionY) 
-        external returns (bool);
+        address _player, uint8 attackingPositionX, uint8 attackingPositionY, 
+        address _currentPlayer) external returns (bool);
+    function setCurrentPlayer(address _player) external;
+    function getCurrentPlayer() external view returns(address);
+    function getSender() external view returns(address);
     
     // Correct positions hit related functions
 
@@ -88,8 +91,8 @@ interface IntBattleshipStorage {
     //    VerificationStatus _status) external returns (bool);
     
     function getTransactionOfficer() external view returns (address);
-    //function setTransactionOfficer(address payable _transactionOfficer) 
-        //external returns (bool);
+    function setTransactionOfficer(address payable _transactionOfficer) 
+        external returns (bool);
     
     // Revealed leafs and proofs related functions
 
@@ -170,6 +173,8 @@ interface IntBattleshipStorage {
 
     function verifyAdversaryLeaf(uint256 _battleId, address _adversary, bytes32 _leaf, 
     bytes32 _root) external view returns (bool);
+
+    function bytes32ToString(bytes32 data) external pure returns (string memory);
 
     /*function checkProofOrdered(bytes memory proof, bytes32 root, 
     string memory hash, uint256 index) external returns (bool);

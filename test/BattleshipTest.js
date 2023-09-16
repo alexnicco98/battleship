@@ -40,7 +40,8 @@ contract("Battleship", accounts => {
     before(async () => {
         battleshipInstance = await Battleship.deployed();
         battleshipStorageInstance = await BattleshipStorage.deployed();
-        //merkleTreeInstance = await MerkleTree.deployed();
+        /*battleshipStorageInstance = await BattleshipStorage.new(false, { from: owner });
+        await battleshipStorageInstance.setTransactionOfficer(owner, { from: owner });*/
     });
 
     // DEBUG
@@ -565,9 +566,15 @@ contract("Battleship", accounts => {
             console.log("Winner address", updatedBattleState.winner);
             if (updatedBattleState.winner === playerOne) {
                 console.log("Player One wins!");
+                let ok = await battleshipInstance.collectReward(battleId, {from: playerOne});
+                console.log("collectReward result: ", ok);
             } else{
                 console.log("Player Two wins!");
+                let ok = await battleshipInstance.collectReward(battleId, {from: playerTwo});
+                console.log("collectReward result: ", ok);
             }
+            
+            //assert.equal(ok);
         }
     }); 
 

@@ -17,12 +17,14 @@ contract BattleshipStorage {
     uint256 private totalNumberOfPlayers;
     address payable private owner;
     address payable private transactionOfficer;
+    address private currentPlayer;
+    address public sender;
     uint256 private rewardCommissionRate;
     uint256 private cancelCommissionRate;
     bool private isTest;
     uint8 public sumOfShipSizes = 0;
     uint8 private gridSquare;
-    address private battleShipContractAddress;
+    address public battleShipContractAddress;
     mapping(uint256 => IntBattleshipStruct.BattleModel) public battles; // saved on the blockchain
     mapping(address => IntBattleshipStruct.PlayerModel) private players;
     //mapping(address => bytes32[]) private proofs;
@@ -45,24 +47,33 @@ contract BattleshipStorage {
     event LogMessage(string _message);
     event LogsMessage(string _message1, string _message2, string _message3);
     event shipsToString(string[] _ship);
+    event PlayerCheating(address _player);
     event Print();
 
     modifier onlyOwner() {
-        require(msg.sender == owner, "Only the owner can execute this transaction");
+        string memory text = string(abi.encodePacked("BattleshipStorage: Only the owner can execute this transaction, ", addressToString(msg.sender)));
+        require(msg.sender == owner, text);
         _;
     }
 
+   /* modifier onlyCurrentPlayer() {
+        //string memory text = string(abi.encodePacked("BattleshipStorage: Only the current player can execute this transaction ", addressToString(msg.sender)));
+        require(msg.sender == currentPlayer, addressToString(msg.sender) );
+        _;
+    }*/
+
     modifier onlyAuthorized() {
-        address sender = msg.sender;
+        //address sender = msg.sender;
         bool isBattleShipContract = sender == battleShipContractAddress;
         require(isBattleShipContract || isTest, "Unauthorized access");
         _;
     }
 
-    constructor(bool _isTest) {
+    constructor(bool _isTest) { //, address _battleShipContractAddress
         gameId = 0;
         maxNumberOfMissiles = gridDimensionN * gridDimensionN;
         isTest = _isTest;
+        //battleShipContractAddress = _battleShipContractAddress;
         //gameLogic = IntBattleshipLogic(_gameLogic);
 
         gamePhaseMapping[IntBattleshipStruct.GamePhase.Placement] = 
@@ -78,22 +89,17 @@ contract BattleshipStorage {
         gridSquare = gridDimensionN * gridDimensionN;
     }
 
-
+    // Helper function to convert address to string
+    function addressToString(address addr) public pure returns (string memory) {
+        bytes32 value = bytes32(uint256(uint160(addr)));
+        return bytes32ToString(value);
+    }
+    
     function initializeShipPositionMapping() private {
         uint8 shipSizes;
-        //uint8 axisX;
-        //uint8 axisY;
         for (uint8 i = 0; i < numShips; i++) {
             shipSizes = i + 1;
             sumOfShipSizes += shipSizes;
-            /*(axisX, axisY) = (0,0);
-            players[owner].shipPositions.push(ShipPosition({
-                shipLength: shipSizes,
-                direction: ShipDirection.None,
-                axisX: 0,
-                axisY: 0,
-                state: ShipState.Intact
-            }));*/
         }
     }
 
@@ -168,75 +174,6 @@ contract BattleshipStorage {
         return nodes[nodes.length - 1];
     }
 
-    /*function calculateMerkleRoot(bytes32[][] memory _leaves, address _player) 
-    external returns (bytes32) {
-        require(_leaves.length > 0, "At least one leaf is required");
-
-        bytes32[] storage nodes = merkleNodes[_player];
-        bytes32[][] memory localLeaves = _leaves; // Create a local copy
-
-        bytes32 _leaf = localLeaves[0][0];
-
-        // Calculate the sibling indexes
-        uint8 siblingIndexY = 0;
-        uint8 siblingIndexX = 1;
-
-        // Check for valid sibling index
-        require(siblingIndexX < localLeaves[siblingIndexY].length, "Invalid sibling index X");
-
-        // Calculate the sibling value
-        bytes32 siblingValue = localLeaves[siblingIndexY][siblingIndexX];
-
-        // Calculate the parent hash
-        bytes32 parentHash = sha256(abi.encodePacked(_leaf, siblingValue));
-        nodes.push(parentHash);
-
-        // Continue up the tree until reaching the root
-        while (localLeaves.length > 1) {
-            // Calculate the sibling indexes for the parent
-            uint8 parentSiblingIndexY = siblingIndexY / 2;
-            uint8 parentSiblingIndexX;
-
-            if (siblingIndexX % 2 == 0) {
-                parentSiblingIndexX = siblingIndexX + 1;
-            } else {
-                parentSiblingIndexX = siblingIndexX - 1;
-            }
-
-            // Check for a valid parent sibling index
-            require(parentSiblingIndexX < localLeaves[parentSiblingIndexY].length, "Invalid parent sibling index X");
-
-            // Calculate the parent sibling value
-            bytes32 parentSiblingValue = localLeaves[parentSiblingIndexY][parentSiblingIndexX];
-
-            // Calculate the new parent hash
-            parentHash = sha256(abi.encodePacked(parentSiblingValue, parentHash));
-            nodes.push(parentHash);
-
-            // Update sibling indexes for the next iteration
-            siblingIndexX = parentSiblingIndexX;
-            siblingIndexY = parentSiblingIndexY;
-
-            // Reduce the size of localLeaves array
-            localLeaves = trimLeaves(localLeaves);
-
-            // Update _leaf with the new value
-            _leaf = localLeaves[0][0];
-        }
-        
-        return parentHash;
-    }
-
-    // Helper function to trim the leaves array
-    function trimLeaves(bytes32[][] memory _leaves) internal pure returns (bytes32[][] memory) {
-        bytes32[][] memory newLeaves = new bytes32[][](_leaves.length / 2);
-        
-        for (uint256 i = 0; i < newLeaves.length; i++) {
-            newLeaves[i] = _leaves[i * 2];
-        }
-        
-        return newLeaves;
-    }*/
     function calculateMerkleRoot(bytes32[][] memory _leaves, address _player)
     external returns (bytes32) {
         require(_leaves.length > 0, "At least one leaf is required");
@@ -279,9 +216,6 @@ contract BattleshipStorage {
         for (uint256 i = 0; i < n - 1; i += 2) {
             require(index < parents.length, "Index should be less that the size of the array");
             parents[index] = sha256(abi.encodePacked(_nodes[i], _nodes[i + 1]));
-            /*string memory test = string(abi.encodePacked("Merged --> nodeIndex: ",
-                    uintToString(i), ", with: ", uintToString(i+1)));
-            emit LogMessage(test);*/
             nodes.push(parents[index]);
             index++;
         }
@@ -311,45 +245,6 @@ contract BattleshipStorage {
         return a < b ? keccak256(abi.encodePacked(a, b)) : 
                        keccak256(abi.encodePacked(b, a));
     }
-
-    // Function to generate Merkle Proof for single leaf
-    /*function generateSingleLeafProof(bytes32[][] memory _leaves, bytes32 _leaf, 
-    bytes32 _root, uint8 _leafIndexY, uint8 _leafIndexX) external pure returns (bytes32) {
-        require(_leafIndexY < _leaves.length, "Invalid leaf index Y");
-        require(_leafIndexX < _leaves[_leafIndexY].length, "Invalid leaf index X");
-        
-        bytes32[] memory leafHashes = new bytes32[](_leaves.length * _leaves[0].length);
-        for (uint8 i = 0; i < _leaves.length; i++) {
-            for (uint8 j = 0; j < _leaves[i].length; j++) {
-                leafHashes[i * _leaves[0].length + j] = _leaves[i][j];
-            }
-        }
-        
-        bytes32 calculatedRoot = calculateMerkleRootInternal(leafHashes);
-        require(_root == calculatedRoot, "Provided root does not match calculated root");
-
-        // Calculate the sibling indexes
-        uint8 siblingIndexY = _leafIndexY;
-        uint8 siblingIndexX;
-
-        if (_leafIndexX % 2 == 0) {
-            siblingIndexX = _leafIndexX + 1;
-        } else {
-            siblingIndexX = _leafIndexX - 1;
-        }
-
-        // Check for valid sibling index
-        require(siblingIndexX < _leaves[_leafIndexY].length, "Invalid sibling index X");
-
-        // Calculate the sibling value
-        bytes32 siblingValue = _leaves[siblingIndexY][siblingIndexX];
-        
-        // Calculate the parent hash
-        _root = keccak256(abi.encodePacked(_leaf, siblingValue));
-
-        
-        return _root;
-    }*/
 
     /* this function is build for the specific case of 4 x 4 matrix */
     // calculate the Merkle proof from the specified _player, axisY, and axisX to the root
@@ -681,9 +576,6 @@ contract BattleshipStorage {
         }
     } 
 
-    /** TODO: instead of save the all the leafs, probably I should
-        considering just calculate the root and every attack phase
-        return the position leaf position hit by the attack**/
     function setShipPositions(uint8[] memory shipLengths, uint8[] memory axisXs,
     uint8[] memory axisYs, IntBattleshipStruct.ShipDirection[] memory directions, address player
     ) external {
@@ -701,8 +593,12 @@ contract BattleshipStorage {
                 state: IntBattleshipStruct.ShipState.Intact
             });
             playerModel.shipPositions.push(newShip);
+            // anti-cheat check
+            if( playerModel.shipPositions.length > numShips){
+                emit PlayerCheating(player);
+                return;
+            }
         }
-        //convertAndEmitShipPositions(playerModel.shipPositions);
         transformShipPosition(playerModel, player);
     }
 
@@ -769,27 +665,6 @@ contract BattleshipStorage {
 
         return string(abi.encodePacked(numBytes));
     }
-
-
-    /* for (uint256 i = 0; i < gridDimensionN; i++) {
-            for (uint256 j = 0; j < gridDimensionN; j++) {
-                if( j == axisXs[shipIndexX] && i == axisYs[shipIndexX] ){
-                    ShipPosition memory newShip = ShipPosition({
-                        shipLength: shipLengths[shipIndexX],
-                        axisX: axisXs[shipIndexX],
-                        axisY: axisYs[shipIndexX],
-                        direction: directions[shipIndexX],
-                        state: ShipState.Intact
-                    });
-                    playerModel.shipPositions.push(newShip);
-                    shipIndexX++;
-                    state = 1;
-                }else{
-                    state = 0;
-                }
-                playerModel.leafs.push(createMerkleTreeLeaf(state));
-            }
-        } */
 
     function getSumOfShipSize() external view returns (uint8) {
         return sumOfShipSizes;
@@ -909,6 +784,10 @@ contract BattleshipStorage {
         return lobbyMap[_player];
     }
 
+    function getLobbyByPlayer(address _player) internal view returns (IntBattleshipStruct.LobbyModel memory) {
+        return lobbyMap[_player];
+    }
+
     function setLobbyByAddress(address _player, IntBattleshipStruct.LobbyModel memory _lobbyModel) 
     external returns (bool) {
         lobbyMap[_player] = _lobbyModel;
@@ -923,7 +802,7 @@ contract BattleshipStorage {
     }
 
     // Utility function to convert bytes32 to string
-    function bytes32ToString(bytes32 data) private pure returns (string memory) {
+    function bytes32ToString(bytes32 data) internal pure returns (string memory) {
         bytes memory bytesString = new bytes(64);
         for (uint256 i = 0; i < 32; i++) {
             bytes1 char = bytes1(bytes32(uint256(data) * 2**(8 * i)));
@@ -964,6 +843,7 @@ contract BattleshipStorage {
     function setLastPlayTimeByBattleId(uint256 _battleId, uint256 _playTime) 
     external returns (bool){
         lastPlayTime[_battleId] = _playTime;
+        currentPlayer = battles[_battleId].client;
         return true;
     }
 
@@ -985,11 +865,33 @@ contract BattleshipStorage {
     }
 
     function setPositionsAttackedByBattleIdAndPlayer(uint256 _battleId, address _player, 
-    uint8 _attackingPositionX, uint8 _attackingPositionY) external returns (bool) {
+    uint8 _attackingPositionX, uint8 _attackingPositionY, address _currentPlayer) external returns (bool) {
+        if( _currentPlayer == currentPlayer){
+            revert("The player that call this function should be different each time");
+        }
+        switchPlayer(_battleId);
         positionsAttacked[_battleId][_player].push([_attackingPositionY, 
         _attackingPositionX]);
+        //sender = msg.sender;
+        //currentPlayer = battles[_battleId].client;
         return true;
     }
+
+    function switchPlayer(uint256 _battleId) internal{
+        currentPlayer = (battles[_battleId].client == currentPlayer) ? battles[_battleId].host : battles[_battleId].client;
+    }
+
+    /*function setCurrentPlayer(address _player) external{
+       currentPlayer = _player; 
+    }
+
+    function getCurrentPlayer() external view returns(address){
+        return currentPlayer;
+    }
+
+    function getSender() external view returns(address){
+        return sender;
+    }*/
 
     // Correct positions hit related functions
 
@@ -1045,13 +947,19 @@ contract BattleshipStorage {
         return turn[_battleId];
     }
     
-    function setTurnByBattleId (uint256 _battleId, address _turn) external returns (bool){
+    function setTurnByBattleId(uint256 _battleId, address _turn) external returns (bool){
         turn[_battleId]  = _turn;
         return true;
     }
 
     function getTransactionOfficer() external view returns (address payable) {
         return transactionOfficer;
+    }
+
+    function setTransactionOfficer(address payable _transactionOfficer) 
+    external returns (bool) {
+        transactionOfficer = _transactionOfficer;
+        return true;
     }
 
     
@@ -1130,12 +1038,6 @@ contract BattleshipStorage {
 
     function setTotalNumberOfPlayers(uint256 _totalPlayers) external onlyOwner returns (bool) {
         totalNumberOfPlayers = _totalPlayers;
-        return true;
-    }
-
-    function setTransactionOfficer(address payable _transactionOfficer) 
-    external onlyOwner returns (bool) {
-        transactionOfficer = _transactionOfficer;
         return true;
     }
 
