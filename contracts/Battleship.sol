@@ -47,6 +47,9 @@ contract Battleship {
         address _opponentAddress);
     event ConfirmWinner(uint256 _battleId, address _winnerAddress, 
         address _opponentAddress, uint _reward);
+    event PenaltyApplied(uint256 _battleId, address _player, uint256 _penaltyAmount);
+    event StakeFrozen(uint256 _battleId, address _player, uint256 _stake);
+    event StakeRefunded(uint256 _battleId, address _opponent, uint256 _refundedAmount);
     event Transfer(address _to, uint256 _amount, uint256 _balance);
     event StakeValue(uint256 _value);
     event Print();
@@ -120,7 +123,7 @@ contract Battleship {
         uint totalStake = gamePhaseDetail.stake * 2;
         battleId = dataStorage.createNewGameId();
         IntBattleshipStruct.BattleModel memory battle  = IntBattleshipStruct.BattleModel(totalStake, lobby.occupant, player, 
-            block.timestamp, player, false, address(0), IntBattleshipStruct.GamePhase.Shooting, 
+            block.timestamp, player, false, false, false, address(0), IntBattleshipStruct.GamePhase.Shooting, 
             gamePhaseDetail.maxTimeForPlayerToPlay, false, 0, block.timestamp, 
             block.timestamp, false, false);       
         
@@ -152,56 +155,38 @@ contract Battleship {
         return battleId;
     }
 
-    function attack(uint256 _battleId, bytes32[] memory _proofLeaf,
-    uint8 _attackingPositionX, uint8 _attackingPositionY) public onlyCurrentPlayer returns (bool){
-        
+    function attack(uint256 _battleId, bytes32[] memory _proofLeaf, uint8 _attackingPositionX, 
+    uint8 _attackingPositionY) public onlyCurrentPlayer returns (bool){
         IntBattleshipStruct.BattleModel memory battle = dataStorage.getBattle(_battleId);
         IntBattleshipStruct.GamePhaseDetail memory gamePhaseDetail = dataStorage.getGamePhaseDetails(
             battle.gamePhase);
         address player = msg.sender;
         address opponent = battle.host == player ? battle.client : battle.host;
         address nextTurn = dataStorage.getTurnByBattleId(_battleId);
-
-        /*uint8[2] memory previousPositionIndex = dataStorage.
-            getLastPositionsAttackedByBattleIdAndPlayer(_battleId, player);*/
         uint8[2] memory previousPositionIndex = [_attackingPositionY, _attackingPositionX];
-        //bytes32 root = dataStorage.getMerkleTreeRootByBattleIdAndPlayer(_battleId, opponent);
-
-        /*emit LogMessage(string(abi.encodePacked("proof: ", bytes32ToString(
-            _currentPositionLeaf), ", rootHash: ", bytes32ToString(root), 
-            ", proofLeafHash: ", bytes32ToString(_proofLeaf), ", indexY: ", 
-            uintToString(previousPositionIndex[0]), ", indexX: ", 
-            uintToString(previousPositionIndex[1]))));*/
-
-        //uint256 len = dataStorage.getPositionsAttackedLength(_battleId, player);
-        
         bool proofValidity = false;
-        /*if ( len == 0) {
-            proofValidity = true;
-        } else {
-            
-            
-            //PlayerModel memory playerModel = dataStorage.getPlayerByAddress(opponent);
-            //proof = merkleProof.createProof(_currentPositionLeaf,
-            //_previousPositionLeaf, _previousPositionIndex);
-            //dataStorage.setProofByIndexAndPlayer(_previousPositionIndex, player, proof);
-            
-            
-        }
-        ProofVariables memory proofVar = ProofVariables({
-                proof: _proofLeaf,
-                root: root,
-                leaf: _currentPositionLeaf,
-                index: previousPositionIndex
-            });*/
+
         proofValidity = dataStorage.verifyProof(_proofLeaf, opponent, 
             _attackingPositionY, _attackingPositionX);
 
         uint256 lastPlayTime = dataStorage.getLastPlayTimeByBattleId(_battleId);
+        uint256 currentTime = block.timestamp;
+        uint256 timeElapsed = currentTime - lastPlayTime;
+
+        if (timeElapsed > gamePhaseDetail.maxTimeForPlayerToPlay) {
+            
+            // Freeze the deposit
+            freezeDeposit(_battleId, player);
+
+            // Emit an event indicating the penalty
+            emit PenaltyApplied(_battleId, player, gamePhaseDetail.penaltyAmount);
+            
+            return false;
+        }
 
         require(!battle.isCompleted, "A winner has been detected. Proceed to verify inputs");
-        require((block.timestamp - lastPlayTime) < gamePhaseDetail.maxTimeForPlayerToPlay, 
-            "Time to play is expired.");
+        //require((block.timestamp - lastPlayTime) < gamePhaseDetail.maxTimeForPlayerToPlay, 
+        //    "Time to play is expired.");
         require(nextTurn == player, "Wait till next turn");
         require(proofValidity, "The proof and position combination indicates an invalid move");
 
@@ -233,7 +218,41 @@ contract Battleship {
         return true;
     }
 
-        function getPositionsAttacked(uint _battleId, address _player) 
+    function freezeDeposit(uint256 _battleId, address _player) internal {
+        IntBattleshipStruct.BattleModel memory battle = dataStorage.getBattle(_battleId);
+        IntBattleshipStruct.GamePhaseDetail memory gamePhaseDetail = dataStorage.getGamePhaseDetails(battle.gamePhase);
+
+        // Ensure that the player has a stake to freeze
+        require(gamePhaseDetail.stake > 0, "No stake to freeze.");
+
+        // Freeze the player's stake
+        if (_player == battle.host) {
+            // Player is the host, freeze the host's stake
+            battle.hostStakeFrozen = true;
+        } else if (_player == battle.client) {
+            // Player is the client, freeze the client's stake
+            battle.clientStakeFrozen = true;
+        } else {
+            // Invalid player address
+            revert("Invalid player address.");
+        }
+
+        // Refund the opponent's stake
+        address opponent = (_player == battle.host) ? battle.client : battle.host;
+        // Ensure that the opponent's stake is not already frozen
+        require(!(battle.hostStakeFrozen && battle.clientStakeFrozen), "Both players' stakes are frozen.");
+        
+        // Transfer the opponent's stake back to them
+        (bool success, ) = opponent.call{value: gamePhaseDetail.stake}("");
+        require(success, "Transfer failed.");
+
+        // Emit events to log the freezing and refunding of stakes
+        emit StakeFrozen(_battleId, _player, gamePhaseDetail.stake);
+        emit StakeRefunded(_battleId, opponent, gamePhaseDetail.stake);
+    }
+
+
+    function getPositionsAttacked(uint _battleId, address _player) 
     public view returns(uint8[2] memory){
         return dataStorage.getLastPositionsAttackedByBattleIdAndPlayer(_battleId, _player);
     }

@@ -31,6 +31,8 @@ library IntBattleshipStruct {
         uint256 startTime; // Battle start time
         address turn; // Address indicating whose turn it is to play next
         bool isCompleted; // Indicates whether or not the battle has been completed
+        bool clientStakeFrozen; // Indicates that the client have expired his time to play
+        bool hostStakeFrozen; // Indicates that the host have expired his time to play
         address winner; // Holds the address of the winning player;
         GamePhase gamePhase; // The game phase
         uint256 maxTimeForPlayerDelay; // If a captain does not play after this time elapses,
@@ -68,6 +70,7 @@ library IntBattleshipStruct {
 
     struct GamePhaseDetail {
         uint256 stake;
+        uint256 penaltyAmount;
         GamePhase gamePhase;
         uint256 maxTimeForPlayerToPlay;
     }

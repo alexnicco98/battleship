@@ -11,12 +11,11 @@ contract BattleshipStorage {
     uint8 private gridDimensionN = 4;
     uint8 private numShips = 2;
     uint256 private gameId;
-    uint256 private minTimeRequiredForPlayerToRespond = 3 minutes;
+    uint256 private maxTime = 4 seconds;// 3 minutes;
     uint256 private maxNumberOfMissiles;
     uint256 private minStakingAmount = uint(0.0001 ether);
     uint256 private totalNumberOfPlayers;
     address payable private owner;
-    address payable private transactionOfficer;
     address private currentPlayer;
     address public sender;
     uint256 private rewardCommissionRate;
@@ -78,13 +77,16 @@ contract BattleshipStorage {
 
         gamePhaseMapping[IntBattleshipStruct.GamePhase.Placement] = 
             IntBattleshipStruct.GamePhaseDetail(minStakingAmount, 
-            IntBattleshipStruct.GamePhase.Placement, minTimeRequiredForPlayerToRespond);
+            minStakingAmount, IntBattleshipStruct.GamePhase.Placement, 
+            maxTime);
         gamePhaseMapping[IntBattleshipStruct.GamePhase.Shooting] = 
-            IntBattleshipStruct.GamePhaseDetail(minStakingAmount, 
-            IntBattleshipStruct.GamePhase.Shooting, minTimeRequiredForPlayerToRespond);
+            IntBattleshipStruct.GamePhaseDetail(minStakingAmount,
+            minStakingAmount, IntBattleshipStruct.GamePhase.Shooting, 
+            maxTime);
         gamePhaseMapping[IntBattleshipStruct.GamePhase.Gameover] = 
             IntBattleshipStruct.GamePhaseDetail(minStakingAmount, 
-            IntBattleshipStruct.GamePhase.Gameover, minTimeRequiredForPlayerToRespond);
+            minStakingAmount, IntBattleshipStruct.GamePhase.Gameover, 
+            maxTime);
         initializeShipPositionMapping();
         gridSquare = gridDimensionN * gridDimensionN;
     }
@@ -340,6 +342,7 @@ contract BattleshipStorage {
 
         return true;
     }
+    
 
     function log2(uint256 x) internal pure returns (uint8) {
         uint8 result = 0;
@@ -678,14 +681,14 @@ contract BattleshipStorage {
         gridDimensionN = newValue;
     }
 
-    function msgSender() external view returns(address sender) {
+    function msgSender() external view returns(address _sender) {
         if(msg.sender == address(this)) {
             bytes memory array = msg.data;
             uint256 index = msg.data.length;
             assembly ("memory-safe"){
                 // Load the 32 bytes word from memory with the 
                 // address on the lower 20 bytes, and mask those.
-                sender := and(mload(add(array, index)), 
+                _sender := and(mload(add(array, index)), 
                     0xffffffffffffffffffffffffffffffffffffffff)
             }
         } else {
@@ -951,17 +954,6 @@ contract BattleshipStorage {
         turn[_battleId]  = _turn;
         return true;
     }
-
-    function getTransactionOfficer() external view returns (address payable) {
-        return transactionOfficer;
-    }
-
-    function setTransactionOfficer(address payable _transactionOfficer) 
-    external returns (bool) {
-        transactionOfficer = _transactionOfficer;
-        return true;
-    }
-
     
 }
 
@@ -1005,12 +997,12 @@ contract BattleshipStorage {
     }
 
     function getMinTimeRequiredForPlayerToRespond() external view returns (uint256) {
-        return minTimeRequiredForPlayerToRespond;
+        return maxTime;
     }
 
     function setMinTimeRequiredForPlayerToRespond(uint256 _minTime) 
     external onlyOwner returns (bool) {
-        minTimeRequiredForPlayerToRespond = _minTime;
+        maxTime = _minTime;
         return true;
     }
 

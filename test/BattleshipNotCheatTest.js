@@ -5,7 +5,6 @@ const GamePhase = IntBattleshipStruct.GamePhase;
 const ShipDirection = IntBattleshipStruct.ShipDirection;
 const ShipPosition = IntBattleshipStruct.ShipPosition;
 
-
 contract("Battleship", accounts => {
     let battleshipInstance;
     let battleshipStorageInstance;
@@ -19,12 +18,6 @@ contract("Battleship", accounts => {
     before(async () => {
         battleshipInstance = await Battleship.deployed();
         battleshipStorageInstance = await BattleshipStorage.deployed();
-       // await battleshipStorageInstance.setBattleshipContractAddress(battleshipInstance.address);
-        // Get the address of the deployed Battleship contract
-        //const battleshipContractAddress = battleshipInstance.address;
-
-        // Set the address of the Battleship contract in BattleshipStorage
-        //await battleshipStorageInstance.setBattleshipContractAddress(battleshipContractAddress);
     });
 
     // check that the requirment inside "Hit and sunk: implementation on the blockchain" are met
@@ -71,6 +64,8 @@ contract("Battleship", accounts => {
             // handle the requirment #2
             if (error.message.includes("Ship would go out of bounds vertically")) {
                 console.log("Caught expected error: Ship would go out of bounds vertically");
+                console.log("-----------------------------------------------");
+                console.log("-----------------------------------------------");
             } else {
                 throw error;
             }
@@ -175,16 +170,11 @@ contract("Battleship", accounts => {
         let attackingPosition = positionsAttackedByPlayerTwo[0]; 
         let proofleaf = await battleshipStorageInstance.generateProof(
             playerOne, attackingPosition.axisY, attackingPosition.axisX);
-        // Get the current state of the battle
-        //let initialBattleState = await battleshipStorageInstance.getBattle(battleId);
 
         console.log("playerTwo perform the 1° attack");
         console.log("attackingPosition.axisX:", attackingPosition.axisX);
         console.log("attackingPosition.axisY:", attackingPosition.axisY);
         console.log("-----------------------------------------------");
-        
-        //let current = await battleshipStorageInstance.getCurrentPlayer();
-        //console.log("Current player: ", current);
 
         // playerTwo perform the 1° attack
         let attackResult = await battleshipInstance.attack(
@@ -204,31 +194,54 @@ contract("Battleship", accounts => {
             }
         }
 
-        await battleshipStorageInstance.setPositionsAttackedByBattleIdAndPlayer(
-            battleId, playerTwo, 1, 2, playerOne);
-    
-        // Get the updated state of the battle
-        /*let updatedBattleState = await battleshipStorageInstance.getBattle(battleId);
+        const initialTime = Math.floor(Date.now() / 1000); // Get current timestamp in seconds
+        const delaySeconds = 5; // 5 seconds (adjust as needed)
+        const endTime = initialTime + delaySeconds;
 
-        // Watch for the ConfirmShotStatus event
-        let confirmShotStatusEvent = attackResult.logs.find(
-            log => log.event === "ConfirmShotStatus"
-        );
+        console.log("Waiting for the time delay...");
 
-        if (confirmShotStatusEvent) {
-            
-            const isHit = await battleshipStorageInstance.isHit(playerOne, attackingPosition.axisX, attackingPosition.axisY);
+        // Check if playerOne's deposit has been frozen
+        const playerOneBalanceBeforePenalty = await web3.eth.getBalance(playerOne);
 
-            // Update the game board with the attack result
-            updateGameBoard(playerOne, attackingPosition.axisX, attackingPosition.axisY, isHit, 1);
+        while (Math.floor(Date.now() / 1000) < endTime) {
+            await sleep(1000); // Wait for 1 second before checking again
+        }
 
-            // Print the updated game board
-            console.log("Player One Board:");
-            printGameBoard(1);
-            console.log("-----------------------------------------------");
-            console.log("-----------------------------------------------");
-        }*/
+        console.log("Time delay has elapsed.");
+
+        // ------------------------------------------------------------------
+        // playerOne perform the 1° attack
+        attackingPosition = positionsAttackedByPlayerOne[0];
+        proof = await battleshipStorageInstance.getMerkleTreeProof(playerTwo);
+        proofleaf = await battleshipStorageInstance.generateProof(
+            playerTwo, attackingPosition.axisY, attackingPosition.axisX);
+        proof = await battleshipStorageInstance.getMerkleTreeProof(playerOne);
+        
+        console.log("playerOne perform the 1° attack after the time is elapsed");
+        
+        attackResult = await battleshipInstance.attack(
+            battleId, proofleaf, attackingPosition.axisX, attackingPosition.axisY, 
+            { from: playerOne });
+
+        // handle the requirment #5
+        if (attackResult.receipt.logs.length > 0) {
+            // Detect the PlayerCheating event
+            assert.equal(attackResult.receipt.logs[0].event, 
+                "StakeFrozen", "Expected StakeFrozen event for playerOne");
+            assert.equal(attackResult.receipt.logs[1].event, 
+                "StakeRefunded", "Expected StakeRefunded event for playerOne");
+            assert.equal(attackResult.receipt.logs[2].event, 
+                "PenaltyApplied", "Expected PenaltyApplied event for playerOne");
+            console.log("All the events that indicates that the time is elapsed, are correctly emitted");
+        } else {
+            // Handle the case where there are no logs
+            assert.fail("Expected differents event, but no events were emitted");
+        }
         
     }); 
+
+    function sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
 
 });

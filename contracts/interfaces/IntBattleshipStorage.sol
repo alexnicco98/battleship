@@ -90,10 +90,6 @@ interface IntBattleshipStorage {
     //function setBattleVerification(uint256 _battleId, address _player, 
     //    VerificationStatus _status) external returns (bool);
     
-    function getTransactionOfficer() external view returns (address);
-    function setTransactionOfficer(address payable _transactionOfficer) 
-        external returns (bool);
-    
     // Revealed leafs and proofs related functions
 
     function getRevealedLeavesByBattleIdAndPlayer(uint256 _battleId, 
