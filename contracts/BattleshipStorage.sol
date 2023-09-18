@@ -11,7 +11,7 @@ contract BattleshipStorage {
     uint8 private gridDimensionN = 4;
     uint8 private numShips = 2;
     uint256 private gameId;
-    uint256 private maxTime = 4 seconds;// 3 minutes;
+    uint256 private maxTime = 4 seconds; // 3 minutes;
     uint256 private maxNumberOfMissiles;
     uint256 private minStakingAmount = uint(0.0001 ether);
     uint256 private totalNumberOfPlayers;
@@ -26,10 +26,6 @@ contract BattleshipStorage {
     address public battleShipContractAddress;
     mapping(uint256 => IntBattleshipStruct.BattleModel) public battles; // saved on the blockchain
     mapping(address => IntBattleshipStruct.PlayerModel) private players;
-    //mapping(address => bytes32[]) private proofs;
-
-    //mapping(uint256 => mapping(address => mapping(uint256 => bytes32))) 
-    //private revealedPositions;
     mapping(uint256 => mapping(address => uint8[2][])) private positionsAttacked;
     mapping(address => bytes32[]) private merkleNodes;
     mapping(uint256 => mapping(address => bytes32)) private merkleTreeRoot;
@@ -40,8 +36,6 @@ contract BattleshipStorage {
     mapping(uint256 => mapping(address => bytes32)) private revealedLeaves;
     mapping(address => IntBattleshipStruct.LobbyModel) public lobbyMap; // saved on the blockchain
     mapping(IntBattleshipStruct.GamePhase => IntBattleshipStruct.GamePhaseDetail) public gamePhaseMapping; // saved on the blockchain
-    //bytes32[] proof;
-    //bytes32[] hashedDataSequence;
 
     event LogMessage(string _message);
     event LogsMessage(string _message1, string _message2, string _message3);
@@ -68,12 +62,10 @@ contract BattleshipStorage {
         _;
     }
 
-    constructor(bool _isTest) { //, address _battleShipContractAddress
+    constructor(bool _isTest) { 
         gameId = 0;
         maxNumberOfMissiles = gridDimensionN * gridDimensionN;
         isTest = _isTest;
-        //battleShipContractAddress = _battleShipContractAddress;
-        //gameLogic = IntBattleshipLogic(_gameLogic);
 
         gamePhaseMapping[IntBattleshipStruct.GamePhase.Placement] = 
             IntBattleshipStruct.GamePhaseDetail(minStakingAmount, 
@@ -144,15 +136,9 @@ contract BattleshipStorage {
     function createMerkleTreeLeaf(uint256 _state, address _player) 
     internal view returns (bytes32) {
         // Generate a random salt
-        bytes32 salt = bytes32(uint256(keccak256(abi.encodePacked(block.timestamp))));
+        bytes32 salt = bytes32(uint256(keccak256(abi.encodePacked(block.timestamp, block.difficulty,  _player))));
 
         // Calculate the value of the leaf node
-        // I'm adding also the addrress because otherwise,
-        // the leaf are equals for both players
-       // bytes32 value = bytes32(_state) ^ salt ^ bytes32(uint256(uint160(_player)));
-
-        // Calculate the value of the leaf node
-        // , bytes32(uint256(uint160(_player)))
         bytes32 leaf = keccak256(abi.encodePacked(bytes32(_state), salt));
 
         return leaf;
@@ -189,10 +175,6 @@ contract BattleshipStorage {
         for (uint256 i = 0; i < n ; i++) {
             for (uint256 j = 0; j < n ; j+=2) {
                 newRow[index] = sha256(abi.encodePacked(_leaves[i][j], _leaves[i][j + 1]));
-                /*string memory test = string(abi.encodePacked("Merged --> AxisY: ",
-                    uintToString(i), ", AxisX: ", uintToString(j), ", with --> axisY: ", 
-                    uintToString(i), ", AxisX: ", uintToString(j+1)));
-                emit LogMessage(test);*/
                 nodes.push(newRow[index]);
                 index++;
             } 
@@ -206,7 +188,6 @@ contract BattleshipStorage {
         bytes32[] storage nodes = merkleNodes[_player];
 
         if (n == 1) {
-            //nodes.push(_nodes[0]);
             return _nodes[0];
         }
 
@@ -366,45 +347,6 @@ contract BattleshipStorage {
         return calculatedHash == getMerkleTreeRootByBattleIdAndPlayer(_battleId, _adversary);
     }
 
-    // check if the ship position is valid or is overlapping w.r.t. another ship
-    function areShipsNonOverlapping(uint8[] memory startXPositions, 
-    uint8[] memory startYPositions, uint8[] memory shipLengths, 
-    IntBattleshipStruct.ShipDirection[] memory directions) private view returns (bool) { 
-        uint8 nShips = uint8(shipLengths.length);
-        uint8[] memory shipLen; 
-        uint8[] memory staPosX; 
-        uint8[] memory staPosY; 
-        IntBattleshipStruct.ShipDirection[] memory dir= directions;
-
-        {
-            shipLen = shipLengths;
-            staPosX = startXPositions;
-            staPosX = startYPositions;
-        }
-
-        for (uint8 i = 0; i < nShips; i++) {
-            uint8 startX = staPosX[i];
-            uint8 startY = staPosY[i];
-            uint8 shipLength = shipLen[i];
-            IntBattleshipStruct.ShipDirection direction = dir[i];
-
-            for (uint8 j = 0; j < shipLength; j++) {
-                uint8 x = getShipPositionX(startX, j, direction);
-                uint8 y = getShipPositionY(startY, j, direction);
-
-                if (!isWithinGrid(x, y, gridDimensionN)) {
-                    return false;
-                }
-
-                if (doesOverlap(i, staPosX, staPosY, shipLen, dir)) {
-                    return false;
-                }
-            }
-        }
-
-        return true;
-    }
-
     function getShipPositionX(uint8 startX, uint8 j, IntBattleshipStruct.ShipDirection direction) 
     private pure returns (uint8) {
         return direction == IntBattleshipStruct.ShipDirection.Horizontal ? startX + j : startX;
@@ -413,53 +355,6 @@ contract BattleshipStorage {
     function getShipPositionY(uint8 startY, uint8 j, IntBattleshipStruct.ShipDirection direction) 
     private pure returns (uint8) {
         return direction == IntBattleshipStruct.ShipDirection.Vertical ? startY + j : startY;
-    }
-
-    function isWithinGrid(uint8 x, uint8 y, uint8 gridSize) private pure returns (bool) {
-        return x < gridSize && y < gridSize;
-    }
-
-    function doesOverlap(uint8 shipIndex, uint8[] memory startXPositions,
-    uint8[] memory startYPositions, uint8[] memory shipLengths, 
-    IntBattleshipStruct.ShipDirection[] memory directions) private pure returns (bool) {
-        for (uint8 k = 0; k < shipIndex; k++) {
-            if (doShipsOverlap(shipIndex, k, startXPositions, startYPositions, 
-            shipLengths, directions)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    function doShipsOverlap(uint8 shipIndexA, uint8 shipIndexB,
-    uint8[] memory startXPositions, uint8[] memory startYPositions, 
-    uint8[] memory shipLengths, IntBattleshipStruct.ShipDirection[] memory directions) 
-    private pure returns (bool) {
-        uint8 startX_A = startXPositions[shipIndexA];
-        uint8 startY_A = startYPositions[shipIndexA];
-        uint8 shipLength_A = shipLengths[shipIndexA];
-        IntBattleshipStruct.ShipDirection direction_A = directions[shipIndexA];
-
-        uint8 startX_B = startXPositions[shipIndexB];
-        uint8 startY_B = startYPositions[shipIndexB];
-        uint8 shipLength_B = shipLengths[shipIndexB];
-        IntBattleshipStruct.ShipDirection direction_B = directions[shipIndexB];
-
-        for (uint8 m = 0; m < shipLength_A; m++) {
-            uint8 x_A = getShipPositionX(startX_A, m, direction_A);
-            uint8 y_A = getShipPositionY(startY_A, m, direction_A);
-
-            for (uint8 n = 0; n < shipLength_B; n++) {
-                uint8 x_B = getShipPositionX(startX_B, n, direction_B);
-                uint8 y_B = getShipPositionY(startY_B, n, direction_B);
-
-                if (x_A == x_B && y_A == y_B) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
     }
 
     // Logic related function
@@ -474,7 +369,7 @@ contract BattleshipStorage {
     }
 
     function getShipPositionByAxis(address _player, uint8 _axisX, uint8 _axisY) 
-    public view returns (IntBattleshipStruct.ShipPosition memory) {
+    public returns (IntBattleshipStruct.ShipPosition memory) {
         IntBattleshipStruct.PlayerModel storage player = players[_player];
         require(player.leafIndexX.length == sumOfShipSizes && player.leafIndexY.length
             == sumOfShipSizes && player.leafIndexShipPosition.length == sumOfShipSizes,
@@ -482,7 +377,7 @@ contract BattleshipStorage {
         
         for (uint8 i = 0; i < sumOfShipSizes; i++) {
             if (player.leafIndexX[i] == _axisX && player.leafIndexY[i] == _axisY) {
-                //emit LogMessage(uintToString(player.leafIndexShipPosition[i]));
+                //player.shipPositions[player.leafIndexShipPosition[i]].numHit++;
                 return player.shipPositions[player.leafIndexShipPosition[i]];
             }
         }
@@ -491,8 +386,9 @@ contract BattleshipStorage {
         IntBattleshipStruct.ShipPosition memory defaultShipPosition = IntBattleshipStruct.ShipPosition({
                 shipLength: 0,
                 direction: IntBattleshipStruct.ShipDirection.None,
-                axisX: 0,
-                axisY: 0,
+                axisX: _axisX,
+                axisY: _axisY,
+                //numHit: 0,
                 state: IntBattleshipStruct.ShipState.None
             });
         return defaultShipPosition;
@@ -507,7 +403,6 @@ contract BattleshipStorage {
         
         for (uint8 i = 0; i < sumOfShipSizes; i++) {
             if (player.leafIndexX[i] == _axisX && player.leafIndexY[i] == _axisY) {
-                //emit LogMessage(uintToString(player.leafIndexShipPosition[i]));
                 return true;
             }
         }
@@ -523,30 +418,6 @@ contract BattleshipStorage {
 
     function getMerkleTreeLeaves(address _address) external view returns (bytes32[][] memory) {
         return players[_address].leaves;
-    }
-
-    function convertAndEmitShipPositions(IntBattleshipStruct.ShipPosition[] memory shipPositions) 
-    public {
-        string[] memory shipPositionStrings = new string[](shipPositions.length);
-
-        for (uint256 i = 0; i < shipPositions.length; i++) {
-            IntBattleshipStruct.ShipPosition memory position = shipPositions[i];
-            string memory positionString = string(
-                abi.encodePacked(
-                    "Ship ", 
-                    uintToString(position.shipLength), 
-                    " at (", 
-                    uintToString(position.axisX), 
-                    ",", 
-                    uintToString(position.axisY), 
-                    ") with direction ", 
-                    shipDirectionToString(position.direction)
-                )
-            );
-            shipPositionStrings[i] = positionString;
-        }
-
-        emit shipsToString(shipPositionStrings);
     }
 
      function uintToString(uint256 value) internal pure returns (string memory) {
@@ -568,17 +439,6 @@ contract BattleshipStorage {
         return string(buffer);
     }
 
-    function shipDirectionToString(IntBattleshipStruct.ShipDirection direction) 
-    internal pure returns (string memory) {
-        if (direction == IntBattleshipStruct.ShipDirection.Horizontal) {
-            return "Horizontal";
-        } else if (direction == IntBattleshipStruct.ShipDirection.Vertical) {
-            return "Vertical";
-        } else {
-            return "Unknown";
-        }
-    } 
-
     function setShipPositions(uint8[] memory shipLengths, uint8[] memory axisXs,
     uint8[] memory axisYs, IntBattleshipStruct.ShipDirection[] memory directions, address player
     ) external {
@@ -592,6 +452,7 @@ contract BattleshipStorage {
                 shipLength: shipLengths[i],
                 axisX: axisXs[i],
                 axisY: axisYs[i],
+                //numHit: 0,
                 direction: directions[i],
                 state: IntBattleshipStruct.ShipState.Intact
             });
@@ -760,16 +621,6 @@ contract BattleshipStorage {
         return true;
     }
 
-    /*function updatePlayerByAddress(address _player, PlayerModel memory _playerModel)
-     onlyAuthorized external returns (bool) {
-        _playerModel.updatedAt = block.timestamp;
-        if (_playerModel.createdAt == 0) {
-            _playerModel.createdAt = block.timestamp;
-        }
-        players[_player] = _playerModel;
-        return true;
-    }*/
-
     // Game mode and lobby related functions
 
     function getGamePhaseDetails(IntBattleshipStruct.GamePhase _gamePhase) 
@@ -799,11 +650,6 @@ contract BattleshipStorage {
 
     // Merkle Tree related functions
 
-    function encryptMerkleTree(bytes32 merkleTree) external pure returns (bytes32) {
-        bytes32 hash = keccak256(abi.encodePacked(merkleTree));
-        return hash;
-    }
-
     // Utility function to convert bytes32 to string
     function bytes32ToString(bytes32 data) internal pure returns (string memory) {
         bytes memory bytesString = new bytes(64);
@@ -814,17 +660,6 @@ contract BattleshipStorage {
         }
         return string(bytesString);
     }
-
-    /*function getRevealedPositionValueByBattleIdAndPlayer(uint256 _battleId, 
-    address _revealingPlayer, uint256 _position) external view returns (bytes32) {
-        return revealedPositions[_battleId][_revealingPlayer][_position];
-    }
-
-    function setRevealedPositionByBattleIdAndPlayer(uint256 _battleId, 
-    address _revealingPlayer, uint256 _position, bytes32 _value) external returns (bool) {
-        revealedPositions[_battleId][_revealingPlayer][_position] = _value;
-        return true;
-    }*/
 
     function getMerkleTreeRootByBattleIdAndPlayer(uint256 _battleId, address _player) 
     public view returns (bytes32) {
@@ -853,6 +688,11 @@ contract BattleshipStorage {
     function getPositionsAttackedLength(uint256 _battleId, address _player) 
     external view returns (uint256) {
         return positionsAttacked[_battleId][_player].length;
+    }
+
+    function getAllPositionsAttacked(uint256 _battleId, address _player)
+    external view returns (uint8[2][] memory){
+        return positionsAttacked[_battleId][_player];
     }
 
     function getLastPositionsAttackedByBattleIdAndPlayer(uint256 _battleId, address _player) 
@@ -884,18 +724,6 @@ contract BattleshipStorage {
         currentPlayer = (battles[_battleId].client == currentPlayer) ? battles[_battleId].host : battles[_battleId].client;
     }
 
-    /*function setCurrentPlayer(address _player) external{
-       currentPlayer = _player; 
-    }
-
-    function getCurrentPlayer() external view returns(address){
-        return currentPlayer;
-    }
-
-    function getSender() external view returns(address){
-        return sender;
-    }*/
-
     // Correct positions hit related functions
 
     function getCorrectPositionsHitByBattleIdAndPlayer(uint256 _battleId, address _player) 
@@ -908,19 +736,6 @@ contract BattleshipStorage {
         correctPositionsHit[_battleId][_player].push(_positions);
         return true;
     }
-
-    // Battle verification related functions
-
-    /*function getBattleVerification(uint256 _battleId, address _player) 
-    external view returns (VerificationStatus) {
-        return battleVerification[_battleId][_player];
-    }
-
-    function setBattleVerification(uint256 _battleId, address _player, 
-    VerificationStatus _verificationStatus) external returns (bool) {
-        battleVerification[_battleId][_player] = _verificationStatus;
-        return true;
-    }*/
 
     // Revealed leafs related functions
 
@@ -935,15 +750,6 @@ contract BattleshipStorage {
         return true;
     }
 
-    /*function getProofByIndexAndPlayer(uint256 _index, address _player) external view returns (bytes32) {
-        return proofs[_player][_index];
-    }
-
-    function setProofByIndexAndPlayer(uint256 _index, address _player, bytes32 _proof) external returns (bool) {
-        proofs[_player][_index] = _proof;
-        return true;
-    }*/
-
     // Miscellaneous functions
 
     function getTurnByBattleId(uint256 _battleId) external view returns(address){
@@ -956,104 +762,3 @@ contract BattleshipStorage {
     }
     
 }
-
-/*
-
-    function setPlayerAddresses(address[] memory _playerAddresses) 
-    external onlyOwner returns (bool) {
-        playerAddresses = _playerAddresses;
-        return true;
-    }
-
-    function addPlayerAddress(address _playerAddress) external onlyOwner returns (bool) {
-        playerAddresses.push(_playerAddress);
-        return true;
-    }
-
-    function removePlayerAddress(address _playerAddress) external onlyOwner returns (bool) {
-        uint256 len = playerAddresses.length;
-        for (uint256 i = 0; i < len; i++) {
-            if (playerAddresses[i] == _playerAddress) {
-                playerAddresses[i] = playerAddresses[len - 1];
-                playerAddresses.pop();
-                return true;
-            }
-        }
-        return false;
-    }
-
-    function updateOwner(address payable _owner) external onlyOwner returns (bool) {
-        owner = _owner;
-        return true;
-    }
-
-    function getGameId() external view returns (uint256) {
-        return gameId;
-    }
-
-    function setGameId(uint256 _gameId) external onlyOwner returns (bool) {
-        gameId = _gameId;
-        return true;
-    }
-
-    function getMinTimeRequiredForPlayerToRespond() external view returns (uint256) {
-        return maxTime;
-    }
-
-    function setMinTimeRequiredForPlayerToRespond(uint256 _minTime) 
-    external onlyOwner returns (bool) {
-        maxTime = _minTime;
-        return true;
-    }
-
-    function getMaxNumberOfMissiles() external view returns (uint256) {
-        return maxNumberOfMissiles;
-    }
-
-    function setMaxNumberOfMissiles(uint256 _maxMissiles) external onlyOwner returns (bool) {
-        maxNumberOfMissiles = _maxMissiles;
-        return true;
-    }
-
-    function getMinStakingAmount() external view returns (uint256) {
-        return minStakingAmount;
-    }
-
-    function setMinStakingAmount(uint256 _minStakingAmount) external onlyOwner returns (bool) {
-        minStakingAmount = _minStakingAmount;
-        return true;
-    }
-
-    function getTotalNumberOfPlayers() external view returns (uint256) {
-        return totalNumberOfPlayers;
-    }
-
-    function setTotalNumberOfPlayers(uint256 _totalPlayers) external onlyOwner returns (bool) {
-        totalNumberOfPlayers = _totalPlayers;
-        return true;
-    }
-
-    function getRewardCommissionRate() external view returns (uint256) {
-        return rewardCommissionRate;
-    }
-
-    function setRewardCommissionRate(uint256 _commissionRate) 
-    external onlyOwner returns (bool) {
-        rewardCommissionRate = _commissionRate;
-        return true;
-    }
-
-    function getCancelCommissionRate() external view returns (uint256) {
-        return cancelCommissionRate;
-    }
-
-    function setCancelCommissionRate(uint256 _commissionRate) 
-    external onlyOwner returns (bool) {
-        cancelCommissionRate = _commissionRate;
-        return true;
-    }
-
-    function setIsTest(bool _isTest) external onlyOwner returns (bool) {
-        isTest = _isTest;
-        return true;
-    }*/

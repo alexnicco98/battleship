@@ -7,14 +7,7 @@ library IntBattleshipStruct {
     enum GamePhase {None, Placement, Shooting, Gameover} // phase of the game
     enum ShipState {None, Intact, Damaged, Sunk } // condition of the ship
     enum ShipDirection {None, Vertical, Horizontal} // ship direction
-    enum PlayerType {None, Host, Client}
-    enum VerificationStatus {None, Unverified, Ok, Cheated}
 
-    //  position of a ship, including the ship lenght and axis.
-    /*  Implementation choice: based on the width of the Gameboard,
-        there will be n-1 ships in the game for both players.
-        The lenghts of this ships will be from 1 to n-1. 
-        All with width of 1*/
     struct ShipPosition {
         uint8 shipLength;
         uint8 axisX;
@@ -81,22 +74,6 @@ library IntBattleshipStruct {
         bytes32 playerOneRootHash; // Holds the merkletree root of the player one
         bytes32 playerTwoRootHash; // Holds the merkletree root of the player two
     }
-
-    struct BattleVerificationModel {
-        uint8 battleId;
-        bytes32 previousPositionLeaf;
-        bytes previousPositionProof;
-        uint8 attackingPosition;
-        bytes[] proofs;
-        bytes32[] leafs;
-        uint8[] indexes;
-    }
-
-    struct AttackModel {
-        address player;
-        uint256 tiles;
-    }
-
     
 }
 

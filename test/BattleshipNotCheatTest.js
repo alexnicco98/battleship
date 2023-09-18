@@ -157,6 +157,62 @@ contract("Battleship", accounts => {
             { from: playerTwo, value: valueInWei });
         
         battleId = result.logs[0].args._battleId;
+        console.log("Battle ID : ", battleId.toString());
+        
+        console.log("-----------------------------------------------");
+        // try to create another game between two other players
+        let playerThree = accounts[2];
+        let playerFour = accounts[3];
+        let battleId2;
+
+        console.log("player Three adrress: ", playerThree);
+        console.log("player Four adrress: ", playerFour);
+
+        await battleshipStorageInstance.setShipPositions(
+            playerOneShipLengths,
+            playerOneAxisXs,
+            playerOneAxisYs,
+            playerOneDirections,
+            playerThree,
+        );
+
+        // Set ship positions for player two
+        await battleshipStorageInstance.setShipPositions(
+            playerTwoShipLengths,
+            playerTwoAxisXs,
+            playerTwoAxisYs,
+            playerTwoDirections,
+            playerFour,
+        );
+
+        // Create Merkle tree leaves for player one and player two
+        let playerThreeLeaves = await battleshipStorageInstance.getMerkleTreeLeaves(playerThree);
+        let playerFourLeaves = await battleshipStorageInstance.getMerkleTreeLeaves(playerFour);
+
+        await battleshipStorageInstance.calculateMerkleRoot(playerThreeLeaves, playerThree);
+        await battleshipStorageInstance.calculateMerkleRoot(playerFourLeaves, playerFour);
+
+        // Calculate Merkle roots for both players
+        let playerThreeRootHash = await battleshipStorageInstance.
+            getMerkleRoot(playerThree);
+        let playerFourRootHash = await battleshipStorageInstance.
+            getMerkleRoot(playerFour);
+        let gamePhase2 = GamePhase.Placement;
+
+        // Player Three
+        valueInWei = 100000000000000;
+
+        result = await battleshipInstance.createLobby(gamePhase2, playerThreeRootHash, 
+            { from: playerThree, value: valueInWei });
+            
+        // Player Four
+        valueInWei = 100000000000000;
+        result = await battleshipInstance.joinLobby(playerThree, gamePhase2, playerFourRootHash, 
+            { from: playerFour, value: valueInWei });
+        
+        battleId2 = result.logs[0].args._battleId;
+        console.log("Battle ID 2: ", battleId2.toString());
+        console.log("-----------------------------------------------");
        
     });
 

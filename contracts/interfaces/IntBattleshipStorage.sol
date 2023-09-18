@@ -3,11 +3,11 @@ pragma solidity >=0.8.0 <0.9.0;
 pragma abicoder v2;
 
 import "../libraries/IntBattleshipStruct.sol";
-//import "./IntBattleshipLogic.sol";
 
 interface IntBattleshipStorage {
     
     // Battle related functions
+
     function getBattle(uint _battleId) external view returns (IntBattleshipStruct.BattleModel memory);
     function updateBattleById(uint256 _battleId, IntBattleshipStruct.BattleModel memory _battle, 
         IntBattleshipStruct.GamePhase _gamePhase) external returns (bool);
@@ -15,8 +15,6 @@ interface IntBattleshipStorage {
     
     // Game phase and lobby related functions
     
-    //function setGameLogicAddress(address _gameLogicAddress) 
-        //external returns (bool);
     function getGamePhaseDetails(IntBattleshipStruct.GamePhase _gamePhase) 
         external view returns (IntBattleshipStruct.GamePhaseDetail memory);
     function setGamePhaseDetails(IntBattleshipStruct.GamePhase _gamePhase, 
@@ -27,20 +25,15 @@ interface IntBattleshipStorage {
         external returns (bool);
     
     // Player related functions
+
     function getPlayerByAddress(address _address) external view returns (
         IntBattleshipStruct.PlayerModel memory);
     function getContractOwner() external view returns (address);
     function setBattleshipContractAddress(address _address) external returns (bool);
-    //function updatePlayerByAddress(address _address, PlayerModel memory _player) 
-    //    external returns (bool);
     
     // Merkle Tree
+
     function encryptMerkleTree(bytes32 _merkleTree) external pure returns (bytes32);
-    
-    //function getRevealedPositionValueByBattleIdAndPlayer(uint256 _battleId, 
-    //    address _revealingPlayer, uint8 _position) external view returns (bytes32);
-    //function setRevealedPositionByBattleIdAndPlayer(uint256 _battleId, address _player, 
-    //    uint8 _position, bytes32 _revealedPosition) external returns (bool);
     
     function getMerkleTreeRootByBattleIdAndPlayer(uint256 _battleId, 
         address _playerAddress) external view returns (bytes32);
@@ -48,12 +41,6 @@ interface IntBattleshipStorage {
         address _playerAddress, bytes32 _merkleTreeRoot) external returns (bool);
     
     // Position attack related functions
-
-    /*function getLastFiredPositionIndexByBattleIdAndPlayer(uint256 _battleId, 
-        address _player) external view returns (uint8[2] memory);
-    function setLastFiredPositionIndexByBattleIdAndPlayer(uint256 _battleId, 
-        address _player, uint8 _attackingPositionX, uint8 _attackingPositionY) 
-        external returns (bool);*/
     
     function getTurnByBattleId(uint256 _battleId) external view returns (address);
     function setTurnByBattleId(uint256 _battleId, address _turn) 
@@ -66,6 +53,8 @@ interface IntBattleshipStorage {
 
     function getPositionsAttackedLength(uint256 _battleId, address _player) 
         external view returns (uint256);
+    function getAllPositionsAttacked(uint256 _battleId, address _player)
+        external view returns (uint8[2][] memory);
     function getLastPositionsAttackedByBattleIdAndPlayer(uint256 _battleId, 
         address _player) external view returns (uint8[2] memory);
     function setPositionsAttackedByBattleIdAndPlayer(uint256 _battleId, 
@@ -83,13 +72,6 @@ interface IntBattleshipStorage {
         address _player, IntBattleshipStruct.ShipPosition memory _shipPosition) 
         external returns (bool);
     
-    // Battle verification related functions
-
-    //function getBattleVerification(uint256 _battleId, address _player) 
-    //    external view returns (VerificationStatus);
-    //function setBattleVerification(uint256 _battleId, address _player, 
-    //    VerificationStatus _status) external returns (bool);
-    
     // Revealed leafs and proofs related functions
 
     function getRevealedLeavesByBattleIdAndPlayer(uint256 _battleId, 
@@ -100,10 +82,6 @@ interface IntBattleshipStorage {
         external view returns (bytes32);
     function setProofByIndexAndPlayer(uint256 _index, address _player, 
         bytes32 _proof) external returns (bool);
-    //function getLeafByIndexAndPlayer(uint256 _indexX, uint256 _indexY, 
-    //    address _player) external view returns (bytes32);
-    //function setLeafByIndexAndPlayer(uint256 _indexX, uint256 _indexY, 
-    //    address _player, bytes32 _leaf) external returns (bool);
 
     function getNumShips() external view returns (uint8);
     function getSumOfShipSize() external view returns (uint8);
@@ -113,12 +91,6 @@ interface IntBattleshipStorage {
     function msgSender() external view returns(address _sender);
 
     function getShipLenghtFromIndex(uint8 _index) external view returns (uint8);
-
-    /*function getShipInxesFromShipLength(uint8 shipLenght) 
-    external view returns (uint8[] memory);*/
-
-    //function getSlice(uint256 begin, uint256 end, string memory text) 
-    //    external view returns (string memory);
 
     // get a single ship position inside the struct PlayerModel
     function getShipPosition(uint8 _positionKey) 
@@ -145,9 +117,6 @@ interface IntBattleshipStorage {
         uint8[] memory _axisYs, IntBattleshipStruct.ShipDirection[] memory _directions, 
         address _player) external;
 
-    // create a Merkle tree leaves from the ship positions
-    //function createMerkleTreeLeaf(uint256 _state) external view returns (bytes32);
-
     function getMerkleTreeProof(address _player) external view returns (bytes32[] memory);
 
     function getMerkleTreeProofLength(address _player) external view returns (uint256);
@@ -172,22 +141,4 @@ interface IntBattleshipStorage {
 
     function bytes32ToString(bytes32 data) external pure returns (string memory);
 
-    /*function checkProofOrdered(bytes memory proof, bytes32 root, 
-    string memory hash, uint256 index) external returns (bool);
-    
-    function checkProofsOrdered(bytes[] memory proofs, bytes32 root, 
-    string memory leafs) external returns (bool);*/
-
-    /*function checkProof(bytes32[] memory proof, bytes32 root, bytes32 leaf) 
-    external pure returns (bool);*/
-
-    //function getOrderedPositionsAndAxis(string memory positions) 
-    //    external pure returns (uint8[] memory, AxisType[5] memory);
-
-    /*function checkEqualArray(uint8[] memory arr1, uint8[] memory arr2) 
-        external pure returns (bool);
-
-    function getSliceOfBytesArray(bytes memory bytesArray, uint16 indexStart, 
-        uint16 indexStop) external pure returns (bytes memory);
-    */
 }

@@ -1,74 +1,55 @@
 const BattleshipStorage = artifacts.require("BattleshipStorage");
-const IntBattleshipStruct =artifacts.require("IntBattleshipStruct");
-/*const ShipType = IDataStorageSchema.ShipType;
-const AxisType = IDataStorageSchema.AxisType;
-const GamePhase = IDataStorageSchema.GamePhase;*/
+const IntBattleshipStruct = artifacts.require("IntBattleshipStruct");
 const ShipDirection = IntBattleshipStruct.ShipDirection;
 const ShipState = IntBattleshipStruct.ShipState;
 const GamePhase = IntBattleshipStruct.GamePhase;
 
 contract("BattleshipStorage", dataStorage=>{
-    it("Should set game mode details", ()=>{
-        let dataStorage;
-        let gamePhase = GamePhase.Placement;
+    let battleshipStorageInstance;
+
+    before(async () => {
+        battleshipStorageInstance = await BattleshipStorage.deployed();
+    });
+
+    it("Should set game mode details", async ()=>{
         let expectedResult = true; 
 
-        const gamePhaseDetail = {
+        let gamePhaseDetail = {
             stake: 2,
-            gamePhase: gamePhase,
+            penaltyAmount: 2,
+            gamePhase: GamePhase.Placement,
             maxTimeForPlayerToPlay: 10
         };
-        return BattleshipStorage.deployed()
-        .then(instance =>{
-            dataStorage = instance;
-            return instance.setGamePhaseDetails(gamePhase, gamePhaseDetail)            
-        })
-        .then(result=>{
-            assert.equal(result.receipt.status, expectedResult, "Incorrect game mode");
-        })
+
+        let result = await battleshipStorageInstance.setGamePhaseDetails(GamePhase.Placement, gamePhaseDetail)            
+        
+        assert.equal(result.receipt.status, expectedResult, "Incorrect game mode");
+
     });
 
-    it("Should return correct game mode", ()=>{
-        let dataStorage;
+    it("Should return correct game mode", async ()=>{
         let gamePhase = GamePhase.Shooting;
 
-        return BattleshipStorage.deployed()
-        .then(instance=>{
-            dataStorage = instance;
-            return instance.getGamePhaseDetails(gamePhase);
-        })
-        .then(result=>{
-            assert.equal(result.gamePhase, gamePhase);
-        })
+        let result = await battleshipStorageInstance.getGamePhaseDetails(gamePhase);
+        assert.equal(result.gamePhase, gamePhase);
+        
     });
 
-    it("Should set amount of time user last session lasted", ()=>{
-        let dataStorage;
+    it("Should set amount of time user last session lasted", async ()=>{
         let expectedResult = true;
         let battleId = 1000;
         let playTime = 600000;
-        return BattleshipStorage.deployed()
-        .then(instance=>{
-            dataStorage = instance;
-            return dataStorage.setLastPlayTimeByBattleId(battleId, playTime);
-        })
-        .then(result=>{
-            assert.equal(result.receipt.status, expectedResult,expectedResult);
-        })
+        let result = await battleshipStorageInstance.setLastPlayTimeByBattleId(battleId, playTime);
+        assert.equal(result.receipt.status, expectedResult,expectedResult);
     });
 
-    it("Should get amount of time user last session lasted", ()=>{
-        let dataStorage;
+    it("Should get amount of time user last session lasted", async ()=>{
         let battleId = 1000;
         let playTime = 600000;
-        return BattleshipStorage.deployed()
-        .then(instance=>{
-            dataStorage = instance;
-            return dataStorage.getLastPlayTimeByBattleId(battleId);
-        })
-        .then(result=>{
-            assert.equal(result.words[0],playTime);
-        })
+        let result = await battleshipStorageInstance.getLastPlayTimeByBattleId(battleId);
+
+        assert.equal(result.words[0],playTime);
+
     });
 });
 
