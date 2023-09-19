@@ -24,16 +24,7 @@ interface IntBattleshipStorage {
     function setLobbyByAddress(address _player, IntBattleshipStruct.LobbyModel memory _lobby) 
         external returns (bool);
     
-    // Player related functions
-
-    function getPlayerByAddress(address _address) external view returns (
-        IntBattleshipStruct.PlayerModel memory);
-    function getContractOwner() external view returns (address);
-    function setBattleshipContractAddress(address _address) external returns (bool);
-    
     // Merkle Tree
-
-    function encryptMerkleTree(bytes32 _merkleTree) external pure returns (bytes32);
     
     function getMerkleTreeRootByBattleIdAndPlayer(uint256 _battleId, 
         address _playerAddress) external view returns (bytes32);
@@ -60,8 +51,6 @@ interface IntBattleshipStorage {
     function setPositionsAttackedByBattleIdAndPlayer(uint256 _battleId, 
         address _player, uint8 attackingPositionX, uint8 attackingPositionY, 
         address _currentPlayer) external returns (bool);
-    function setCurrentPlayer(address _player) external;
-    function getCurrentPlayer() external view returns(address);
     function getSender() external view returns(address);
     
     // Correct positions hit related functions
@@ -72,16 +61,6 @@ interface IntBattleshipStorage {
         address _player, IntBattleshipStruct.ShipPosition memory _shipPosition) 
         external returns (bool);
     
-    // Revealed leafs and proofs related functions
-
-    function getRevealedLeavesByBattleIdAndPlayer(uint256 _battleId, 
-        address _playerAddress) external view returns (bytes32);
-    function setRevealedLeavesByBattleIdAndPlayer(uint256 _battleId, 
-        address _playerAddress, bytes32 _revealedLeaves) external returns (bool);
-    function getProofByIndexAndPlayer(uint256 _index, address _player) 
-        external view returns (bytes32);
-    function setProofByIndexAndPlayer(uint256 _index, address _player, 
-        bytes32 _proof) external returns (bool);
 
     function getNumShips() external view returns (uint8);
     function getSumOfShipSize() external view returns (uint8);
@@ -125,20 +104,12 @@ interface IntBattleshipStorage {
 
     // create a Merkle root from the Merkle tree leaves
     function calculateMerkleRoot(bytes32[][] memory _leaves,
-    address _player) external returns (bytes32);
+        address _player) external returns (bytes32);
 
-    function generateSingleLeafProof(bytes32[][] memory _leaves, bytes32 _leaf, 
-    bytes32 _root, uint8 _leafIndexY, uint8 _leafIndexX) external pure returns (bytes32);
+    function generateProof(address _player, uint8 axisY, uint8 axisX, uint8 dim) 
+        external returns (bytes32[] memory);
 
-    function generateProof(address _player, uint8 axisY, uint8 axisX) 
-    external returns (bytes32[] memory);
-
-    function verifyProof(bytes32[] memory _proof, address _player, uint8 axisY, uint8 axisX) 
-    external returns (bool);
-
-    function verifyAdversaryLeaf(uint256 _battleId, address _adversary, bytes32 _leaf, 
-    bytes32 _root) external view returns (bool);
-
-    function bytes32ToString(bytes32 data) external pure returns (string memory);
+    function verifyProof(bytes32[] memory _proof, address _player, uint8 axisY, 
+        uint8 axisX, uint8 dim) external returns (bool);
 
 }

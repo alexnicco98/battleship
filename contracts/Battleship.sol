@@ -151,11 +151,16 @@ contract Battleship {
         address player = msg.sender;
         address opponent = battle.host == player ? battle.client : battle.host;
         address nextTurn = dataStorage.getTurnByBattleId(_battleId);
+        uint8 dim = dataStorage.getGridDimensionN();
         uint8[2] memory previousPositionIndex = [_attackingPositionY, _attackingPositionX];
         bool proofValidity = false;
 
         proofValidity = dataStorage.verifyProof(_proofLeaf, opponent, 
-            _attackingPositionY, _attackingPositionX);
+            _attackingPositionY, _attackingPositionX, dim);
+
+        /*string memory text = string(abi.encodePacked("player: ", addressToString(player) , ", positions that cause the cheat,axisX: ", 
+                    uintToString(_attackingPositionX), ", axisY: ", uintToString(_attackingPositionY)));
+        emit LogMessage(text);*/
 
         uint256 lastPlayTime = dataStorage.getLastPlayTimeByBattleId(_battleId);
         uint256 currentTime = block.timestamp;
@@ -189,10 +194,6 @@ contract Battleship {
         // Get the status of the position hit
         IntBattleshipStruct.ShipPosition memory shipPosition = dataStorage.getShipPositionByAxis(opponent, 
             _attackingPositionX, _attackingPositionY);
-
-        /*string memory text = string(abi.encodePacked("player: ", addressToString(player) , ", positions that cause the cheat,axisX: ", 
-                    uintToString(shipPosition.axisX), ", axisY: ", uintToString(shipPosition.axisY)));
-        emit LogMessage(text);*/
 
         // Emit an event containing more details about the last shot fired
         emit ConfirmShotStatus(_battleId, player, opponent, previousPositionIndex, 
@@ -312,7 +313,7 @@ contract Battleship {
         return true;
     }
     
-    function collectReward(uint _battleId) public returns (bool){
+    function collectReward(uint _battleId) internal returns (bool){
         IntBattleshipStruct.BattleModel memory battle = dataStorage.getBattle(_battleId);
         address playerAddress = msg.sender;
         IntBattleshipStruct.GamePhaseDetail memory gamePhaseDetail = dataStorage.getGamePhaseDetails(battle.gamePhase);

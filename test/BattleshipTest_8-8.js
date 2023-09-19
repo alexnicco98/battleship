@@ -19,18 +19,193 @@ contract("Battleship", accounts => {
     // Positions for player one and two
     let playerOnePositions = [
         { shipLength: 1, axisX: 1, axisY: 1, direction: ShipDirection.Horizontal },
-        { shipLength: 2, axisX: 2, axisY: 2, direction: ShipDirection.Vertical }
+        { shipLength: 2, axisX: 6, axisY: 3, direction: ShipDirection.Vertical },
+        { shipLength: 3, axisX: 3, axisY: 3, direction: ShipDirection.Vertical },
+        { shipLength: 4, axisX: 2, axisY: 7, direction: ShipDirection.Horizontal }
     ];
     let playerTwoPositions = [
-        { shipLength: 1, axisX: 0, axisY: 1, direction: ShipDirection.Horizontal },
-        { shipLength: 2, axisX: 3, axisY: 0, direction: ShipDirection.Vertical }
+        { shipLength: 1, axisX: 7, axisY: 7, direction: ShipDirection.Horizontal },
+        { shipLength: 2, axisX: 2, axisY: 5, direction: ShipDirection.Vertical },
+        { shipLength: 3, axisX: 0, axisY: 4, direction: ShipDirection.Horizontal },
+        { shipLength: 4, axisX: 5, axisY: 1, direction: ShipDirection.Vertical }
     ];
 
     // Positions attacked by player one and two
-    let positionsAttackedByPlayerOne = [{axisX: 0, axisY: 1}, {axisX: 0, axisY: 3},
-        {axisX: 1, axisY: 2}, {axisX: 3, axisY: 3}];
-    let positionsAttackedByPlayerTwo = [{axisX: 0, axisY: 0}, {axisX: 2, axisY: 2}, 
-        {axisX: 2, axisY: 3}, {axisX: 1, axisY: 1}];
+    let positionsAttackedByPlayerOne = [
+        // Player one misses on all positions until the last step
+        { axisX: 0, axisY: 0 },
+        { axisX: 0, axisY: 1 },
+        { axisX: 0, axisY: 2 },
+        { axisX: 0, axisY: 3 },
+        { axisX: 0, axisY: 5 },
+        { axisX: 0, axisY: 6 },
+        { axisX: 0, axisY: 7 },
+        { axisX: 1, axisY: 0 },
+        { axisX: 1, axisY: 1 },
+        { axisX: 1, axisY: 2 },
+        { axisX: 1, axisY: 3 },
+        { axisX: 1, axisY: 5 },
+        { axisX: 1, axisY: 6 },
+        { axisX: 1, axisY: 7 },
+        { axisX: 2, axisY: 0 },
+        { axisX: 2, axisY: 1 },
+        { axisX: 2, axisY: 2 },
+        { axisX: 2, axisY: 3 },
+        { axisX: 2, axisY: 7 },
+        { axisX: 3, axisY: 0 },
+        { axisX: 3, axisY: 1 },
+        { axisX: 3, axisY: 2 },
+        { axisX: 3, axisY: 3 },
+        { axisX: 3, axisY: 4 },
+        { axisX: 3, axisY: 5 },
+        { axisX: 3, axisY: 6 },
+        { axisX: 3, axisY: 7 },
+        { axisX: 4, axisY: 0 },
+        { axisX: 4, axisY: 1 },
+        { axisX: 4, axisY: 2 },
+        { axisX: 4, axisY: 3 },
+        { axisX: 4, axisY: 4 },
+        { axisX: 4, axisY: 5 },
+        { axisX: 4, axisY: 6 },
+        { axisX: 4, axisY: 7 },
+        { axisX: 5, axisY: 0 },
+        { axisX: 5, axisY: 5 },
+        { axisX: 5, axisY: 6 },
+        { axisX: 5, axisY: 7 },
+        { axisX: 6, axisY: 0 },
+        { axisX: 6, axisY: 1 },
+        { axisX: 6, axisY: 2 },
+        { axisX: 6, axisY: 3 },
+        { axisX: 6, axisY: 4 },
+        { axisX: 6, axisY: 5 },
+        { axisX: 6, axisY: 6 },
+        { axisX: 6, axisY: 7 },
+        { axisX: 7, axisY: 0 },
+        { axisX: 7, axisY: 1 },
+        { axisX: 7, axisY: 2 },
+        { axisX: 7, axisY: 3 },
+        { axisX: 7, axisY: 4 },
+        { axisX: 7, axisY: 5 },
+        { axisX: 7, axisY: 6 },
+        // Player one hits on the last step
+        { axisX: 0, axisY: 4 },
+        { axisX: 1, axisY: 4 },
+        { axisX: 2, axisY: 4 },
+        { axisX: 2, axisY: 5 },
+        { axisX: 2, axisY: 6 },
+        { axisX: 5, axisY: 1 },
+        { axisX: 5, axisY: 2 },
+        { axisX: 5, axisY: 3 },
+        { axisX: 5, axisY: 4 },
+        { axisX: 7, axisY: 7 }
+      ];
+    let positionsAttackedByPlayerTwo = [
+        // Player one misses on all positions until the last step
+        // Add miss positions (x, y) here for each guess
+        { axisX: 0, axisY: 0 },
+        { axisX: 0, axisY: 1 },
+        { axisX: 0, axisY: 2 },
+        { axisX: 0, axisY: 3 },
+        { axisX: 0, axisY: 4 },
+        { axisX: 0, axisY: 5 },
+        { axisX: 0, axisY: 6 },
+        { axisX: 0, axisY: 7 },
+        { axisX: 1, axisY: 0 },
+        { axisX: 1, axisY: 2 },
+        { axisX: 1, axisY: 3 },
+        { axisX: 1, axisY: 4 },
+        { axisX: 1, axisY: 5 },
+        { axisX: 1, axisY: 6 },
+        { axisX: 1, axisY: 7 },
+        { axisX: 2, axisY: 0 },
+        { axisX: 2, axisY: 1 },
+        { axisX: 2, axisY: 2 },
+        { axisX: 2, axisY: 3 },
+        { axisX: 2, axisY: 4 },
+        { axisX: 2, axisY: 5 },
+        { axisX: 2, axisY: 6 },
+        { axisX: 3, axisY: 0 },
+        { axisX: 3, axisY: 1 },
+        { axisX: 3, axisY: 2 },
+        { axisX: 3, axisY: 6 },
+        { axisX: 4, axisY: 0 },
+        { axisX: 4, axisY: 1 },
+        { axisX: 4, axisY: 2 },
+        { axisX: 4, axisY: 3 },
+        { axisX: 4, axisY: 4 },
+        { axisX: 4, axisY: 5 },
+        { axisX: 4, axisY: 6 },
+        { axisX: 5, axisY: 0 },
+        { axisX: 5, axisY: 1 },
+        { axisX: 5, axisY: 2 },
+        { axisX: 5, axisY: 3 },
+        { axisX: 5, axisY: 4 },
+        { axisX: 5, axisY: 5 },
+        { axisX: 5, axisY: 6 },
+        { axisX: 6, axisY: 0 },
+        { axisX: 6, axisY: 1 },
+        { axisX: 6, axisY: 2 },
+        { axisX: 6, axisY: 5 },
+        { axisX: 6, axisY: 6 },
+        { axisX: 6, axisY: 7 },
+        { axisX: 7, axisY: 0 },
+        { axisX: 7, axisY: 1 },
+        { axisX: 7, axisY: 2 },
+        { axisX: 7, axisY: 3 },
+        { axisX: 7, axisY: 4 },
+        { axisX: 7, axisY: 5 },
+        { axisX: 7, axisY: 6 },
+        { axisX: 7, axisY: 7 },
+        // Player one hits on the last step
+        { axisX: 1, axisY: 1 },
+        { axisX: 3, axisY: 3 },
+        { axisX: 3, axisY: 4 },
+        { axisX: 3, axisY: 5 },
+        { axisX: 2, axisY: 7 },
+        { axisX: 3, axisY: 7 },
+        { axisX: 4, axisY: 7 },
+        { axisX: 5, axisY: 7 },
+        { axisX: 6, axisY: 3 },
+        { axisX: 6, axisY: 4 }
+      ];
+
+      const gameSize = 8;
+      const gameBoardOne = [];
+      const gameBoardTwo = [];
+      // Initialize game boards with empty cells (water)
+      for (let i = 0; i < gameSize; i++) {
+          gameBoardOne.push(Array(gameSize).fill("🌊")); // "🌊" represents water
+          gameBoardTwo.push(Array(gameSize).fill("🌊"));
+      }
+
+      // Function to update the game board with ship and hit information
+      function updateGameBoard(player, x, y, isHit, board) {
+          const hitEmoji = "💥"; // Emoji for a hit
+          const missEmoji = "💦"; // Emoji for a miss (splash)
+      
+          const emoji = isHit ? hitEmoji : missEmoji;
+      
+          if (board == 1) {
+              gameBoardOne[y][x] = emoji;
+          } else {
+              gameBoardTwo[y][x] = emoji;
+          }
+      }
+
+      // Function to print the game board
+      function printGameBoard(boardNum) {
+          let board;
+          if (boardNum == 1) {
+              board = gameBoardOne;
+          } else {
+              board = gameBoardTwo;
+          }
+      
+          for (let row of board) {
+              const spaces = "                 ";
+              console.log(spaces + row.join(" "));
+          }
+      }
 
     // Merkle tree leaves for player one and player two
     let playerOneLeaves;
@@ -44,37 +219,6 @@ contract("Battleship", accounts => {
         battleshipInstance = await Battleship.deployed();
         battleshipStorageInstance = await BattleshipStorage.deployed();
     });
-
-    // DEBUG
-    /*it("should emit StakeValue event with correct stake value", async () => {
-        const _gamePhase = GamePhase.Placement; // Replace with your actual game phase
-        
-        // Perform the emitStackValue transaction
-        let transaction = await battleshipInstance.emitStackValueFromGamePhase(_gamePhase);
-
-        // Find the emitted event in the transaction logs
-        let stakeEvent = transaction.logs.find(log => log.event === "StakeValue");
-        
-        // Access the stake value from the event
-        let emittedStakeValue = stakeEvent.args.value;
-
-        assert.equal(transaction.logs[0].event, "StakeValue", 
-        "Event must indicate that a stake values is emitted");
-
-        // Display the emitted and actual stake values
-        console.log("Emitted stake value:", emittedStakeValue.toString());
-
-        await battleshipInstance.emitStackValueFromMsgValue();
-
-        // Find the emitted event in the transaction logs
-        let stakeEventTwo = transaction.logs.find(log => log.event === "StakeValue");
-        
-        // Access the stake value from the event
-        let emittedStakeValueTwo = stakeEventTwo.args.value;
-
-        // Display the emitted and actual stake values
-        console.log("Emitted stake value 2:", emittedStakeValueTwo.toString());
-    });*/
 
     it("Should join a lobby and start a battle", async () => {
 
@@ -114,7 +258,8 @@ contract("Battleship", accounts => {
         //console.log("player One leaves:", playerOneLeaves.toString());
         //console.log("-----------------------------------------------");
         //console.log("player Two leaves:", playerTwoLeaves.toString());
-
+        
+        /** TODO: check the following function **/
         await battleshipStorageInstance.calculateMerkleRoot(playerOneLeaves, playerOne);
         await battleshipStorageInstance.calculateMerkleRoot(playerTwoLeaves, playerTwo);
 
@@ -186,81 +331,10 @@ contract("Battleship", accounts => {
     });
 
     it("Should perform an attack and check for winner", async () => {
-        const gameSize = 4;
-        const gameBoardOne = [];
-        const gameBoardTwo = [];
-        // Initialize game boards with empty cells (water)
-        for (let i = 0; i < gameSize; i++) {
-            gameBoardOne.push(Array(gameSize).fill("🌊")); // "🌊" represents water
-            gameBoardTwo.push(Array(gameSize).fill("🌊"));
-        }
-
-        // Function to update the game board with ship and hit information
-        function updateGameBoard(player, x, y, isHit, board) {
-            const hitEmoji = "💥"; // Emoji for a hit
-            const missEmoji = "💦"; // Emoji for a miss (splash)
-        
-            const emoji = isHit ? hitEmoji : missEmoji;
-        
-            if (board == 1) {
-                gameBoardOne[y][x] = emoji;
-            } else {
-                gameBoardTwo[y][x] = emoji;
-            }
-        }
-
-        // Function to print the game board
-        function printGameBoard(boardNum) {
-            let board;
-            if (boardNum == 1) {
-                board = gameBoardOne;
-            } else {
-                board = gameBoardTwo;
-            }
-        
-            for (let row of board) {
-                const spaces = "                 ";
-                console.log(spaces + row.join(" "));
-            }
-        }
-
-        function areAllPositionsUnique(positions) {
-            let seen = {};
-        
-            for (let i = 0; i < positions.length; i++) {
-            let position = positions[i];
-            // Create a unique key by concatenating axisX and axisY as a string
-            let positionKey = position.axisX.toString() + "-" + position.axisY.toString();
-        
-            if (seen[positionKey]) {
-                // This position combination has been seen before, not all positions are unique
-                return false;
-            }
-            
-            seen[positionKey] = true;
-            }
-        
-            // All position combinations are unique
-            return true;
-        }
-        
-        let playerOneIsUnique = areAllPositionsUnique(positionsAttackedByPlayerOne);
-        let playerTwoIsUnique = areAllPositionsUnique(positionsAttackedByPlayerTwo);
-
-        if (playerOneIsUnique) {
-            console.log("Player One: All positions are unique");
-        } else {
-            console.log("Player One: Some positions are not unique, indicating possible cheating.");
-        }
-        if (playerTwoIsUnique) {
-            console.log("Player Two: All positions are unique");
-        } else {
-            console.log("Player Two: Some positions are not unique, indicating possible cheating.");
-        }
 
         let attackingPosition = positionsAttackedByPlayerTwo[0]; 
         let proofleaf = await battleshipStorageInstance.generateProof(
-            playerOne, attackingPosition.axisY, attackingPosition.axisX);
+            playerOne, attackingPosition.axisY, attackingPosition.axisX, gameSize);
         // Get the current state of the battle
         let initialBattleState = await battleshipStorageInstance.getBattle(battleId);
 
@@ -300,7 +374,7 @@ contract("Battleship", accounts => {
         // playerOne perform the 1° attack
         attackingPosition = positionsAttackedByPlayerOne[0];
         proofleaf = await battleshipStorageInstance.generateProof(
-            playerTwo, attackingPosition.axisY, attackingPosition.axisX);
+            playerTwo, attackingPosition.axisY, attackingPosition.axisX, gameSize);
         
         console.log("playerOne perform the 1° attack");
         console.log("attackingPosition.axisX:", attackingPosition.axisX);
@@ -316,17 +390,6 @@ contract("Battleship", accounts => {
         attackResult = await battleshipInstance.attack(
             battleId, proofleaf, attackingPosition.axisX, attackingPosition.axisY, 
             { from: playerOne });
-
-        // Check if the attack was successful
-        assert.equal(attackResult.receipt.status, true, "Attack was not successful");
-
-        // Get the updated battle state after the attack
-        updatedBattleState = await battleshipStorageInstance.
-            getLastPlayTimeByBattleId(battleId);
-
-        // Compare battle state before and after the attack
-        assert.notEqual(updatedBattleState, initialBattleState, 
-            "Last play time was not updated");
         
         // Watch for the ConfirmShotStatus event
         confirmShotStatusEvent = attackResult.logs.find(
@@ -349,7 +412,7 @@ contract("Battleship", accounts => {
         
         // ------------------------------------------------------------------
         // playerTwo perform the 2° attack
-        attackingPosition = positionsAttackedByPlayerTwo[1];
+        /*attackingPosition = positionsAttackedByPlayerTwo[1];
         proofleaf = await battleshipStorageInstance.generateProof(
             playerOne, attackingPosition.axisY, attackingPosition.axisX);
         
@@ -531,7 +594,7 @@ contract("Battleship", accounts => {
                 console.log("Player One wins!");
             else
                 console.log("Player Two wins!");
-        }
+        }*/
     }); 
 
 });

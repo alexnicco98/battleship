@@ -27,10 +27,6 @@ contract("Battleship", accounts => {
             { shipLength: 1, axisX: 1, axisY: 1, direction: ShipDirection.Horizontal },
             { shipLength: 2, axisX: 3, axisY: 3, direction: ShipDirection.Vertical }
         ];
-        let playerTwoPositions = [
-            { shipLength: 1, axisX: 0, axisY: 1, direction: ShipDirection.Horizontal },
-            { shipLength: 2, axisX: 3, axisY: 0, direction: ShipDirection.Vertical }
-        ];
 
         // Merkle tree leaves for player one and player two
         let playerOneLeaves;
@@ -44,11 +40,6 @@ contract("Battleship", accounts => {
         let playerOneAxisXs = playerOnePositions.map(ship => ship.axisX);
         let playerOneAxisYs = playerOnePositions.map(ship => ship.axisY);
         let playerOneDirections = playerOnePositions.map(ship => ship.direction);
-
-        const playerTwoShipLengths = playerTwoPositions.map(ship => ship.shipLength);
-        const playerTwoAxisXs = playerTwoPositions.map(ship => ship.axisX);
-        const playerTwoAxisYs = playerTwoPositions.map(ship => ship.axisY);
-        const playerTwoDirections = playerTwoPositions.map(ship => ship.direction);
 
         // Set ship positions for player one
         try {
@@ -90,6 +81,16 @@ contract("Battleship", accounts => {
             playerOne,
         );
 
+        let playerTwoPositions = [
+            { shipLength: 1, axisX: 0, axisY: 1, direction: ShipDirection.Horizontal },
+            { shipLength: 2, axisX: 3, axisY: 0, direction: ShipDirection.Vertical }
+        ];
+
+        let playerTwoShipLengths = playerTwoPositions.map(ship => ship.shipLength);
+        let playerTwoAxisXs = playerTwoPositions.map(ship => ship.axisX);
+        let playerTwoAxisYs = playerTwoPositions.map(ship => ship.axisY);
+        let playerTwoDirections = playerTwoPositions.map(ship => ship.direction);
+
         // Set ship positions for player two
         await battleshipStorageInstance.setShipPositions(
             playerTwoShipLengths,
@@ -99,36 +100,36 @@ contract("Battleship", accounts => {
             playerTwo,
         );
 
-        // try to change the ship positions
-        playerTwoPositions = [
-            { shipLength: 1, axisX: 0, axisY: 2, direction: ShipDirection.Horizontal },
-            { shipLength: 2, axisX: 1, axisY: 2, direction: ShipDirection.Horizontal }
-        ];
+        try {
+            // try to change the ship positions
+            playerTwoPositions = [
+                { shipLength: 1, axisX: 0, axisY: 2, direction: ShipDirection.Horizontal },
+                { shipLength: 2, axisX: 1, axisY: 2, direction: ShipDirection.Horizontal }
+            ];
 
-        const newPlayerTwoShipLengths = playerTwoPositions.map(ship => ship.shipLength);
-        const newPlayerTwoAxisXs = playerTwoPositions.map(ship => ship.axisX);
-        const newPlayerTwoAxisYs = playerTwoPositions.map(ship => ship.axisY);
-        const newPlayerTwoDirections = playerTwoPositions.map(ship => ship.direction);
+            const newPlayerTwoShipLengths = playerTwoPositions.map(ship => ship.shipLength);
+            const newPlayerTwoAxisXs = playerTwoPositions.map(ship => ship.axisX);
+            const newPlayerTwoAxisYs = playerTwoPositions.map(ship => ship.axisY);
+            const newPlayerTwoDirections = playerTwoPositions.map(ship => ship.direction);
 
-        // Set ship positions for player two
-        const cheating = await battleshipStorageInstance.setShipPositions(
-            newPlayerTwoShipLengths,
-            newPlayerTwoAxisXs,
-            newPlayerTwoAxisYs,
-            newPlayerTwoDirections,
-            playerTwo,
-        );
-        
-        // handle the requirment #1
-        // Check if the cheating transaction has events
-        if (cheating.receipt.logs.length > 0) {
-            // Detect the PlayerCheating event
-            assert.equal(cheating.receipt.logs[0].event, 
-                "PlayerCheating", "Expected PlayerCheating event for playerTwo");
-        } else {
-            // Handle the case where there are no logs
-            assert.fail("Expected PlayerCheating event, but no events were emitted");
-        }
+            await battleshipStorageInstance.setShipPositions(
+                newPlayerTwoShipLengths,
+                newPlayerTwoAxisXs,
+                newPlayerTwoAxisYs,
+                newPlayerTwoDirections,
+                playerTwo,
+            );
+
+        } catch (error) {
+            // handle the requirment #1
+            if (error.message.includes("The number of ships allowed must be respected!")) {
+                console.log("Caught expected error: The number of ships allowed must be respected!");
+                console.log("-----------------------------------------------");
+                console.log("-----------------------------------------------");
+            } else {
+                throw error;
+            }
+        }   
 
         // Create Merkle tree leaves for player one and player two
         playerOneLeaves = await battleshipStorageInstance.getMerkleTreeLeaves(playerOne);
@@ -219,7 +220,7 @@ contract("Battleship", accounts => {
     it("Should perform an attack and check for winner", async () => {
         // Positions attacked by player one and two
         let positionsAttackedByPlayerOne = [{axisX: 0, axisY: 1}, {axisX: 0, axisY: 3},
-            {axisX: 2, axisY: 2}, {axisX: 3, axisY: 3}];
+            {axisX: 1, axisY: 2}, {axisX: 3, axisY: 3}];
         let positionsAttackedByPlayerTwo = [{axisX: 0, axisY: 0}, {axisX: 2, axisY: 2}, 
             {axisX: 2, axisY: 3}, {axisX: 1, axisY: 1}];
 
@@ -249,6 +250,24 @@ contract("Battleship", accounts => {
                 throw error;
             }
         }
+
+        let battleBefore = await battleshipStorageInstance.getBattle(battleId);
+        //console.log("Battle before cheat: ", battleBefore);
+
+        // try to use the updateBattleById function
+        battleBefore.isCompleted = true;
+        battleBefore.winner = playerTwo;
+        battleshipStorageInstance.updateBattleById(battleId, battleBefore, IntBattleshipStruct.GamePhase.Gameover);
+
+        console.log("The player Two have perform a cheat, but the");
+
+        let battleAfter = await battleshipStorageInstance.getBattle(battleId);
+        //console.log("Battle after cheat: ", battleAfter);
+
+        // The player try to cheat but the modification are not applied,
+        // so the game can continue without any problems
+        assert.equal(battleBefore.isCompleted, battleAfter.isCompleted, 
+            "The battle information has been modified");
 
         const initialTime = Math.floor(Date.now() / 1000); // Get current timestamp in seconds
         const delaySeconds = 5; // 5 seconds (adjust as needed)

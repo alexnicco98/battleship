@@ -80,39 +80,3 @@ contract("BattleshipLogic", accounts => {
          }
     });
 });
-
-   /* it("Should Get Ordered Positions and axis of ships on the Y axis", () => 
-    {
-        let expectedPositions = [1,11,2,12,22,3,13,23,4,14,24,34,5,15,25,35,45];
-        let expectedAxis = [AxisType.Y, AxisType.Y, AxisType.Y, AxisType.Y, AxisType.Y];
-
-        return BattleshipLogic.deployed()
-        .then(instance => {
-            let positionString = "1200220032004200520000110011001100110011120022003200420052000011001100110011001100112200320042005200001100110011001100110011001100114200520000110011001100110011001100110011001152000011001100110011001100110011001100110011001100110011001100110011001100110011001100110011001100110011001100110011001100110011001100110011001100110011001100110011001100110011001100110011001100110011001100110011001100110011";
-            return instance.getOrderedpositionAndAxis(positionString);
-        })
-        .then(result => {
-            
-            let positions = result[0];
-            let axis = result[1];
-
-            for(var i = 0; i < positions.length; i++)
-            {
-                assert.equal(
-                    positions[i].words[0],
-                    expectedPositions[i],
-                    "Incorrect Position"
-                )
-            }
-
-            for(var i = 0; i < axis.length; i++)
-            {
-                assert.equal(
-                    axis[i].words[0],
-                    expectedAxis[i],
-                    "Incorrect Axis"
-                )
-            }
-        })
-    });*/
-

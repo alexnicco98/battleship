@@ -8,8 +8,8 @@ contract BattleshipStorage {
     
     // in the next development, should be a non-fixed variable that
     // the host player chose at the moment of creation of the game
-    uint8 private gridDimensionN = 4;
-    uint8 private numShips = 2;
+    uint8 private gridDimensionN = 8;
+    uint8 private numShips = 4;
     uint256 private gameId;
     uint256 private maxTime = 4 seconds; // 3 minutes;
     uint256 private maxNumberOfMissiles;
@@ -32,8 +32,6 @@ contract BattleshipStorage {
     mapping(uint256 => address) private turn;
     mapping(uint256 => uint256) private lastPlayTime;
     mapping(uint256 => mapping(address => IntBattleshipStruct.ShipPosition[])) correctPositionsHit;
-    //mapping(uint256 => mapping(address => VerificationStatus)) private battleVerification;
-    mapping(uint256 => mapping(address => bytes32)) private revealedLeaves;
     mapping(address => IntBattleshipStruct.LobbyModel) public lobbyMap; // saved on the blockchain
     mapping(IntBattleshipStruct.GamePhase => IntBattleshipStruct.GamePhaseDetail) public gamePhaseMapping; // saved on the blockchain
 
@@ -84,7 +82,7 @@ contract BattleshipStorage {
     }
 
     // Helper function to convert address to string
-    function addressToString(address addr) public pure returns (string memory) {
+    function addressToString(address addr) internal pure returns (string memory) {
         bytes32 value = bytes32(uint256(uint160(addr)));
         return bytes32ToString(value);
     }
@@ -206,155 +204,167 @@ contract BattleshipStorage {
         return calculateMerkleRootInternal(parents, _player);
     } 
 
-
-    function buildMerkleTree(bytes32[] storage hashArray) 
-    internal returns (bytes32[] memory){
-        uint256 count = hashArray.length; // number of leaves
-        uint256 offset = 0;
-        while (count > 0) {
-            // Iterate 2 by 2, building the hash pairs
-            for (uint256 i = 0; i < count - 1; i += 2) {
-                hashArray.push(
-                    _hashPair(hashArray[offset + i], hashArray[offset + i + 1])
-                );
-            }
-            offset += count;
-            count = count / 2;
-        }
-        return hashArray;
-    }
-
-    function _hashPair(bytes32 a, bytes32 b) private pure returns (bytes32) {
-        return a < b ? keccak256(abi.encodePacked(a, b)) : 
-                       keccak256(abi.encodePacked(b, a));
-    }
-
     /* this function is build for the specific case of 4 x 4 matrix */
     // calculate the Merkle proof from the specified _player, axisY, and axisX to the root
-    function generateProof(address _player, uint8 axisY, uint8 axisX) 
+    function generateProof(address _player, uint8 axisY, uint8 axisX, uint8 dim) 
     external view returns (bytes32[] memory) {
-        uint256 n = gridDimensionN;
-        require(axisY < n && axisX < n, "Invalid leaf coordinates");
+        if( dim == 4){
+            uint256 n = gridDimensionN;
+            require(axisY < n && axisX < n, "Invalid leaf coordinates");
 
-        bytes32[] storage nodes = merkleNodes[_player];
-        bytes32[] memory proof = new bytes32[](n);
+            bytes32[] storage nodes = merkleNodes[_player];
+            bytes32[] memory proof = new bytes32[](n);
 
-        uint256 index = axisY * 2; 
-        if (axisX == 2)
-            index = index + 1; 
-        uint256 offset = n * 2; 
+            uint256 index = axisY * 2; 
+            if (axisX == 2)
+                index = index + 1; 
+            uint256 offset = n * 2; 
 
-        // first level have n * 2 elements
-        proof[0] = nodes[index];
-         // Calculate the parent index
-        if (index == 0 || index == 1) {
-            index = offset;
-        } else if (index == 2 || index == 3) {
-            index = offset + 1;
-        } else if (index == 4 || index == 5) {
-            index = offset + 2;
-        } else if (index == 6 || index == 7){
-            index = offset + 3;
+            // first level have n * 2 elements
+            proof[0] = nodes[index];
+            // Calculate the parent index
+            if (index == 0 || index == 1) {
+                index = offset;
+            } else if (index == 2 || index == 3) {
+                index = offset + 1;
+            } else if (index == 4 || index == 5) {
+                index = offset + 2;
+            } else if (index == 6 || index == 7){
+                index = offset + 3;
+            }
+            offset = offset + (offset / 2); 
+
+            // second level n elements
+            proof[1] = nodes[index];
+            // Calculate the parent index
+            if (index == 8 || index == 9) {
+                index = offset;
+            } else if (index == 10 || index == 11) {
+                index = offset + 1;
+            }
+
+            // third level n / 2 elements
+            proof[2] = nodes[index];
+
+            // the last level is always the root
+            proof[n - 1] = nodes[nodes.length - 1];
+
+            return proof;
+        }else if( dim == 8){
+            uint256 n = gridDimensionN;
+            require(axisY < n && axisX < n, "Invalid leaf coordinates");
+
+            bytes32[] storage nodes = merkleNodes[_player];
+            bytes32[] memory proof = new bytes32[](n);
+
+            // Calculate the initial index based on the provided coordinates
+            uint256 index = axisY * 2 + (axisX % 2 == 0 ? 0 : 1);
+
+            uint256 offset = n * 2;
+            
+            for (uint256 i = 0; i < n - 1; i++) {
+                // Calculate the parent index for each level
+                if (index % 2 == 0) {
+                    index = offset + (index / 2);
+                } else {
+                    index = offset + ((index - 1) / 2);
+                }
+                offset = offset + (offset / 2);
+
+                proof[i] = nodes[index];
+            }
+
+            // The last level is always the root
+            proof[n - 1] = nodes[nodes.length - 1];
+
+            return proof;
+        }else{
+            revert("The dimension is not right!");
         }
-        offset = offset + (offset / 2); 
-
-        // second level n elements
-        proof[1] = nodes[index];
-         // Calculate the parent index
-        if (index == 8 || index == 9) {
-            index = offset;
-        } else if (index == 10 || index == 11) {
-            index = offset + 1;
-        }
-
-        // third level n / 2 elements
-        proof[2] = nodes[index];
-
-        // the last level is always the root
-        proof[n - 1] = nodes[nodes.length - 1];
-
-        return proof;
     }
 
-    function verifyProof(bytes32[] memory _proof, address _player, uint8 axisY, uint8 axisX) 
+    function verifyProof(bytes32[] memory _proof, address _player, uint8 axisY, uint8 axisX, uint8 dim) 
     external view returns (bool) {
-        uint256 n = gridDimensionN;
-        require(axisY < n && axisX < n, "Invalid leaf coordinates");
+        if( dim == 4){
+            uint256 n = gridDimensionN;
+            require(axisY < n && axisX < n, "Invalid leaf coordinates");
 
-        bytes32[] storage nodes = merkleNodes[_player];
+            bytes32[] storage nodes = merkleNodes[_player];
 
-        uint256 index = axisY * 2; 
-        if (axisX == 2)
-            index = index + 1; 
-        uint256 offset = n * 2; 
+            uint256 index = axisY * 2; 
+            if (axisX == 2)
+                index = index + 1; 
+            uint256 offset = n * 2; 
 
-        // first level have n * 2 elements
-        if(_proof[0] != nodes[index])
-            return false;
-         // Calculate the parent index
-        if (index == 0 || index == 1) {
-            index = offset;
-        } else if (index == 2 || index == 3) {
-            index = offset + 1;
-        } else if (index == 4 || index == 5) {
-            index = offset + 2;
-        } else if (index == 6 || index == 7){
-            index = offset + 3;
+            // first level have n * 2 elements
+            if(_proof[0] != nodes[index])
+                return false;
+            // Calculate the parent index
+            if (index == 0 || index == 1) {
+                index = offset;
+            } else if (index == 2 || index == 3) {
+                index = offset + 1;
+            } else if (index == 4 || index == 5) {
+                index = offset + 2;
+            } else if (index == 6 || index == 7){
+                index = offset + 3;
+            }
+            offset = offset + (offset / 2); 
+
+            // second level n elements
+            if(_proof[1] != nodes[index])
+                return false;
+            // Calculate the parent index
+            if (index == 8 || index == 9) {
+                index = offset;
+            } else if (index == 10 || index == 11) {
+                index = offset + 1;
+            }
+
+            // third level n / 2 elements
+            if(_proof[2] != nodes[index])
+                return false;
+
+            // the last level is always the root
+            if(_proof[n - 1] != nodes[nodes.length - 1])
+                return false;
+
+            return true;
+        }else if( dim == 8){
+            uint256 n = gridDimensionN;
+            require(axisY < n && axisX < n, "Invalid leaf coordinates");
+
+            bytes32[] storage nodes = merkleNodes[_player];
+
+            // Calculate the initial index based on the provided coordinates
+            uint256 index = axisY * 2 + (axisX % 2 == 0 ? 0 : 1);
+
+            uint256 offset = n * 2;
+
+            for (uint256 i = 0; i < n - 1; i++) {
+                // Check if the proof element matches the node
+                if (_proof[i] != nodes[index]) {
+                    return false;
+                }
+
+                // Calculate the parent index for each level
+                if (index % 2 == 0) {
+                    index = offset + (index / 2);
+                } else {
+                    index = offset + ((index - 1) / 2);
+                }
+                offset = offset + (offset / 2);
+            }
+
+            // Check if the proof for the last level matches the root
+            if (_proof[n - 1] != nodes[nodes.length - 1]) {
+                return false;
+            }
+
+            return true;
+        }else{
+            revert("The dimension is not right!");
         }
-        offset = offset + (offset / 2); 
-
-        // second level n elements
-        if(_proof[1] != nodes[index])
-            return false;
-         // Calculate the parent index
-        if (index == 8 || index == 9) {
-            index = offset;
-        } else if (index == 10 || index == 11) {
-            index = offset + 1;
-        }
-
-        // third level n / 2 elements
-        if(_proof[2] != nodes[index])
-            return false;
-
-        // the last level is always the root
-        if(_proof[n - 1] != nodes[nodes.length - 1])
-            return false;
-
-        return true;
-    }
-    
-
-    function log2(uint256 x) internal pure returns (uint8) {
-        uint8 result = 0;
-        while (x > 1) {
-            result++;
-            x /= 2;
-        }
-        return result;
-    }
-
-    // Function to verify adversary's single leaf integrity
-    function verifyAdversaryLeaf(uint256 _battleId, address _adversary, bytes32 _leaf, 
-    bytes32 _root) external view returns (bool) {
-        // Concatenate the adversary's leaf and their claimed root hash
-        bytes memory concatenatedProof = abi.encodePacked(_leaf, _root);
-        
-        // Hash the concatenated proof
-        bytes32 calculatedHash = keccak256(concatenatedProof);
-        
-        // Compare the calculated hash with the actual Merkle root of the adversary
-        return calculatedHash == getMerkleTreeRootByBattleIdAndPlayer(_battleId, _adversary);
-    }
-
-    function getShipPositionX(uint8 startX, uint8 j, IntBattleshipStruct.ShipDirection direction) 
-    private pure returns (uint8) {
-        return direction == IntBattleshipStruct.ShipDirection.Horizontal ? startX + j : startX;
-    }
-
-    function getShipPositionY(uint8 startY, uint8 j, IntBattleshipStruct.ShipDirection direction) 
-    private pure returns (uint8) {
-        return direction == IntBattleshipStruct.ShipDirection.Vertical ? startY + j : startY;
     }
 
     // Logic related function
@@ -369,7 +379,7 @@ contract BattleshipStorage {
     }
 
     function getShipPositionByAxis(address _player, uint8 _axisX, uint8 _axisY) 
-    public returns (IntBattleshipStruct.ShipPosition memory) {
+    public view returns (IntBattleshipStruct.ShipPosition memory) {
         IntBattleshipStruct.PlayerModel storage player = players[_player];
         require(player.leafIndexX.length == sumOfShipSizes && player.leafIndexY.length
             == sumOfShipSizes && player.leafIndexShipPosition.length == sumOfShipSizes,
@@ -377,7 +387,6 @@ contract BattleshipStorage {
         
         for (uint8 i = 0; i < sumOfShipSizes; i++) {
             if (player.leafIndexX[i] == _axisX && player.leafIndexY[i] == _axisY) {
-                //player.shipPositions[player.leafIndexShipPosition[i]].numHit++;
                 return player.shipPositions[player.leafIndexShipPosition[i]];
             }
         }
@@ -388,7 +397,6 @@ contract BattleshipStorage {
                 direction: IntBattleshipStruct.ShipDirection.None,
                 axisX: _axisX,
                 axisY: _axisY,
-                //numHit: 0,
                 state: IntBattleshipStruct.ShipState.None
             });
         return defaultShipPosition;
@@ -452,15 +460,16 @@ contract BattleshipStorage {
                 shipLength: shipLengths[i],
                 axisX: axisXs[i],
                 axisY: axisYs[i],
-                //numHit: 0,
                 direction: directions[i],
                 state: IntBattleshipStruct.ShipState.Intact
             });
             playerModel.shipPositions.push(newShip);
             // anti-cheat check
             if( playerModel.shipPositions.length > numShips){
-                emit PlayerCheating(player);
-                return;
+                // I set the revert because the game when I call this function is not
+                // set yet, and so should be too difficult to set it only to allow 
+                // the opposite player to win (consequnce of the cheat)
+                revert("The number of ships allowed must be respected!");
             }
         }
         transformShipPosition(playerModel, player);
@@ -557,30 +566,13 @@ contract BattleshipStorage {
         }
     }
 
-     function getShipLenghtFromIndex(uint8 _index) public view returns (uint8){
+     function getShipLenghtFromIndex(uint8 _index) external view returns (uint8){
         if (_index >= 0 && _index < numShips) {
             return _index + 1;
         } else {
             return 0;
         }
      }
-
-    function stringToUint8(string memory str) public pure returns (uint8) {
-        bytes memory strBytes = bytes(str);
-        require(strBytes.length > 0, "Empty string");
-
-        uint8 result = 0;
-        for (uint256 i = 0; i < strBytes.length; i++) {
-            // Subtract the ASCII value of '0' (48) to get the digit
-            uint8 digit = uint8(strBytes[i]) - 48; 
-            // Check if the character is a valid digit
-            require(digit <= 9, "Invalid character in the string"); 
-            // Build the number digit by digit
-            result = result * 10 + digit; 
-        }
-
-        return result;
-    }
 
     // Battle related functions
 
@@ -604,23 +596,6 @@ contract BattleshipStorage {
         return gameId;
     }
 
-    // Player related functions
-
-    function getPlayerByAddress(address _address) 
-    public view returns (IntBattleshipStruct.PlayerModel memory) {
-        return players[_address];
-    }
-
-    function getContractOwner() public view returns (address) {
-        return owner;
-    }
-
-    function setBattleshipContractAddress(address _address) 
-    onlyOwner external returns (bool) {
-        battleShipContractAddress = _address;
-        return true;
-    }
-
     // Game mode and lobby related functions
 
     function getGamePhaseDetails(IntBattleshipStruct.GamePhase _gamePhase) 
@@ -635,10 +610,6 @@ contract BattleshipStorage {
     }
 
     function getLobbyByAddress(address _player) external view returns (IntBattleshipStruct.LobbyModel memory) {
-        return lobbyMap[_player];
-    }
-
-    function getLobbyByPlayer(address _player) internal view returns (IntBattleshipStruct.LobbyModel memory) {
         return lobbyMap[_player];
     }
 
@@ -674,7 +645,7 @@ contract BattleshipStorage {
 
     // Position attack related functions
 
-    function getLastPlayTimeByBattleId (uint256 _battleId) external view returns (uint256){
+    function getLastPlayTimeByBattleId(uint256 _battleId) external view returns (uint256){
         return lastPlayTime[_battleId];
     }
     
@@ -734,19 +705,6 @@ contract BattleshipStorage {
     function setCorrectPositionsHitByBattleIdAndPlayer(uint256 _battleId, address _player, 
     IntBattleshipStruct.ShipPosition memory _positions) external returns (bool) {
         correctPositionsHit[_battleId][_player].push(_positions);
-        return true;
-    }
-
-    // Revealed leafs related functions
-
-    function getRevealedLeavesByBattleIdAndPlayer(uint256 _battleId, address _player) 
-    external view returns (bytes32) {
-        return revealedLeaves[_battleId][_player];
-    }
-
-    function setRevealedLeavesByBattleIdAndPlayer(uint256 _battleId, address _player, 
-    bytes32 _leaves) external returns (bool) {
-        revealedLeaves[_battleId][_player] = _leaves;
         return true;
     }
 
