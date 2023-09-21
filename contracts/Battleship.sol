@@ -127,7 +127,7 @@ contract Battleship {
         dataStorage.setMerkleTreeRootByBattleIdAndPlayer(battleId, battle.client, _root);
         
         //Set the Last Play Time
-        dataStorage.setLastPlayTimeByBattleId(battleId, block.timestamp);
+        dataStorage.setLastPlayTimeFirstTime(battleId, block.timestamp);
         dataStorage.setTurnByBattleId(battleId, player);
 
         // Update the lobby
@@ -167,6 +167,8 @@ contract Battleship {
         uint256 timeElapsed = currentTime - lastPlayTime;
 
         if (timeElapsed > gamePhaseDetail.maxTimeForPlayerToPlay) {
+
+            //emit LogMessage("time Elapsed");
             
             // Freeze the deposit
             freezeDeposit(_battleId, player);
@@ -185,7 +187,7 @@ contract Battleship {
         dataStorage.setPositionsAttackedByBattleIdAndPlayer(_battleId, player, 
             _attackingPositionX, _attackingPositionY, currentPlayer);
 
-        // Update the turn
+        dataStorage.setLastPlayTimeByBattleId(_battleId, block.timestamp);
         dataStorage.setTurnByBattleId(_battleId, opponent);
 
         // Switch turns

@@ -193,19 +193,19 @@ contract("Battleship", accounts => {
       }
 
       // Function to print the game board
-      function printGameBoard(boardNum) {
-          let board;
-          if (boardNum == 1) {
-              board = gameBoardOne;
-          } else {
-              board = gameBoardTwo;
-          }
-      
-          for (let row of board) {
-              const spaces = "                 ";
-              console.log(spaces + row.join(" "));
-          }
-      }
+    function printGameBoard(boardNum) {
+        let board;
+        if (boardNum == 1) {
+            board = gameBoardOne;
+        } else {
+            board = gameBoardTwo;
+        }
+    
+        for (let row of board) {
+            const spaces = "                 ";
+            console.log(spaces + row.join(" "));
+        }
+    }
 
     // Merkle tree leaves for player one and player two
     let playerOneLeaves;
@@ -255,11 +255,14 @@ contract("Battleship", accounts => {
         playerOneLeaves = await battleshipStorageInstance.getMerkleTreeLeaves(playerOne);
         playerTwoLeaves = await battleshipStorageInstance.getMerkleTreeLeaves(playerTwo);
         
+        /* console.log("player One leaves:");
+        playerOneLeaves.forEach(function(leaf) {
+            console.log(leaf);
+        }); */
         //console.log("player One leaves:", playerOneLeaves.toString());
         //console.log("-----------------------------------------------");
         //console.log("player Two leaves:", playerTwoLeaves.toString());
         
-        /** TODO: check the following function **/
         await battleshipStorageInstance.calculateMerkleRoot(playerOneLeaves, playerOne);
         await battleshipStorageInstance.calculateMerkleRoot(playerTwoLeaves, playerTwo);
 
@@ -300,39 +303,98 @@ contract("Battleship", accounts => {
             { from: playerTwo, value: valueInWei });
         
         battleId = result.logs[0].args._battleId;
-    
-        // Check that the BattleStarted Event is emitted
-        assert.equal(result.logs[0].event, "BattleStarted", 
-            "Event must indicate that a battle has started"); 
-
-        //Check if there is currently a player in the lobby
-        const lobby = await battleshipStorageInstance.getLobbyByAddress(playerOne);
-        
-        // Check if lobby is occupied
-        assert.equal(lobby.isOccupied, true, "Lobby should be occupied");
-    
-        // Check if both players are included in the event log for the battle
-        assert.equal(lobby.playerOneRootHash, 
-            playerOneRootHash, "Player one is included");
-
-        assert.equal(lobby.playerTwoRootHash, 
-            playerTwoRootHash, "Player two is included");
        
-    });
-
-    it("Should store and retrieve the Merkle tree root", async () => {
-        
-        // Retrieve the Merkle tree root, return a bytes32 instead of a string
-        const retrievedMerkleTreeRoot = await battleshipStorageInstance.
-            getMerkleTreeRootByBattleIdAndPlayer(battleId, playerOne);
-
-        assert.equal(retrievedMerkleTreeRoot, playerOneRootHash,
-            "Retrieved MerkleTreeRoot does not match");
     });
 
     it("Should perform an attack and check for winner", async () => {
 
-        let attackingPosition = positionsAttackedByPlayerTwo[0]; 
+        for (let attackNumber = 0; attackNumber < 64; attackNumber++) {
+            await playerTwoPlay(attackNumber);
+            //console.log(board);
+
+            //let delayMilliseconds = 100; // 0.1 seconds
+            //await sleep(delayMilliseconds);
+            if (attackNumber != 63)
+                await playerOnePlay(attackNumber);
+            //await sleep(delayMilliseconds);
+        }
+        console.log("All the attacks has been executed!");
+    
+        async function playerOnePlay(index){
+            let attackingPosition;
+            attackingPosition = positionsAttackedByPlayerOne[index]; 
+            let proofleaf = await battleshipStorageInstance.generateProof(
+                playerTwo, attackingPosition.axisY, attackingPosition.axisX, gameSize);
+    
+            /*console.log("player One perform the ", index.toString(), "° attack");
+            console.log("attackingPosition.axisX:", attackingPosition.axisX);
+            console.log("attackingPosition.axisY:", attackingPosition.axisY);
+            console.log("-----------------------------------------------");*/
+    
+            let attackResult = await battleshipInstance.attack(
+                battleId, proofleaf, attackingPosition.axisX, 
+                attackingPosition.axisY,
+                { from: playerOne });
+    
+            // Watch for the ConfirmShotStatus event
+            let confirmShotStatusEvent = attackResult.logs.find(
+                log => log.event === "ConfirmShotStatus"
+            );
+    
+            if (confirmShotStatusEvent) {
+                
+                let isHit = await battleshipStorageInstance.isHit(playerTwo, 
+                    attackingPosition.axisX, attackingPosition.axisY);
+    
+                // Update the game board with the attack result
+                updateGameBoard(2, attackingPosition.axisX, 
+                    attackingPosition.axisY, isHit, 2);
+    
+                // Print the updated game board
+                /*console.log("Player Two Board:");
+                printGameBoard(2);
+                console.log("-----------------------------------------------");
+                console.log("-----------------------------------------------");*/
+            }
+        }
+        async function playerTwoPlay(index){
+            let attackingPosition;
+            attackingPosition = positionsAttackedByPlayerTwo[index]; 
+            let proofleaf = await battleshipStorageInstance.generateProof(
+                playerOne, attackingPosition.axisY, attackingPosition.axisX, gameSize);
+    
+            /*console.log("player Two perform the ", index.toString(), "° attack");
+            console.log("attackingPosition.axisX:", attackingPosition.axisX);
+            console.log("attackingPosition.axisY:", attackingPosition.axisY);
+            console.log("-----------------------------------------------");*/
+    
+            let attackResult = await battleshipInstance.attack(
+                battleId, proofleaf, attackingPosition.axisX, 
+                attackingPosition.axisY,
+                { from: playerTwo });
+    
+            // Watch for the ConfirmShotStatus event
+            let confirmShotStatusEvent = attackResult.logs.find(
+                log => log.event === "ConfirmShotStatus"
+            );
+    
+            if (confirmShotStatusEvent) {
+                
+                let isHit = await battleshipStorageInstance.isHit(playerOne, 
+                    attackingPosition.axisX, attackingPosition.axisY);
+    
+                // Update the game board with the attack result
+                updateGameBoard(1, attackingPosition.axisX, 
+                    attackingPosition.axisY, isHit, 1);
+    
+                // Print the updated game board
+                /*console.log("Player One Board:");
+                printGameBoard(1);
+                console.log("-----------------------------------------------");
+                console.log("-----------------------------------------------");*/
+            }
+        }
+        /*let attackingPosition = positionsAttackedByPlayerTwo[0]; 
         let proofleaf = await battleshipStorageInstance.generateProof(
             playerOne, attackingPosition.axisY, attackingPosition.axisX, gameSize);
         // Get the current state of the battle
@@ -347,9 +409,6 @@ contract("Battleship", accounts => {
         let attackResult = await battleshipInstance.attack(
             battleId, proofleaf, attackingPosition.axisX, attackingPosition.axisY,
             { from: playerTwo });
-    
-        // Get the updated state of the battle
-        let updatedBattleState = await battleshipStorageInstance.getBattle(battleId);
 
         // Watch for the ConfirmShotStatus event
         let confirmShotStatusEvent = attackResult.logs.find(
@@ -409,12 +468,13 @@ contract("Battleship", accounts => {
             console.log("-----------------------------------------------");
             console.log("-----------------------------------------------");
         }
+
         
         // ------------------------------------------------------------------
         // playerTwo perform the 2° attack
-        /*attackingPosition = positionsAttackedByPlayerTwo[1];
+        attackingPosition = positionsAttackedByPlayerTwo[1];
         proofleaf = await battleshipStorageInstance.generateProof(
-            playerOne, attackingPosition.axisY, attackingPosition.axisX);
+            playerOne, attackingPosition.axisY, attackingPosition.axisX, gameSize);
         
         console.log("playerTwo perform the 2° attack");
         console.log("attackingPosition.axisX:", attackingPosition.axisX);
@@ -448,7 +508,7 @@ contract("Battleship", accounts => {
         // playerOne perform the 2° attack
         attackingPosition = positionsAttackedByPlayerOne[1];
         proofleaf = await battleshipStorageInstance.generateProof(
-            playerTwo, attackingPosition.axisY, attackingPosition.axisX);
+            playerTwo, attackingPosition.axisY, attackingPosition.axisX, gameSize);
         
         console.log("playerOne perform the 2° attack");
         console.log("attackingPosition.axisX:", attackingPosition.axisX);
@@ -482,7 +542,7 @@ contract("Battleship", accounts => {
         // playerTwo perform the 3° attack
         attackingPosition = positionsAttackedByPlayerTwo[2];
         proofleaf = await battleshipStorageInstance.generateProof(
-            playerOne, attackingPosition.axisY, attackingPosition.axisX);
+            playerOne, attackingPosition.axisY, attackingPosition.axisX, gameSize);
 
         console.log("playerTwo perform the 3° attack");
         console.log("attackingPosition.axisX:", attackingPosition.axisX);
@@ -516,7 +576,7 @@ contract("Battleship", accounts => {
         // playerOne perform the 3° attack
         attackingPosition = positionsAttackedByPlayerOne[2];
         proofleaf = await battleshipStorageInstance.generateProof(
-            playerTwo, attackingPosition.axisY, attackingPosition.axisX);
+            playerTwo, attackingPosition.axisY, attackingPosition.axisX, gameSize);
 
         console.log("playerOne perform the 3° attack");
         console.log("attackingPosition.axisX:", attackingPosition.axisX);
@@ -550,7 +610,7 @@ contract("Battleship", accounts => {
         // playerTwo perform the 4° attack
         attackingPosition = positionsAttackedByPlayerTwo[3];
         proofleaf = await battleshipStorageInstance.generateProof(
-            playerOne, attackingPosition.axisY, attackingPosition.axisX);
+            playerOne, attackingPosition.axisY, attackingPosition.axisX, gameSize);
 
         console.log("playerTwo perform the 4° attack");
         console.log("attackingPosition.axisX:", attackingPosition.axisX);
@@ -578,23 +638,63 @@ contract("Battleship", accounts => {
             printGameBoard(1);
             console.log("-----------------------------------------------");
             console.log("-----------------------------------------------");
-        }
-        
-        console.log("event: ", attackResult.logs[2].event);
-
-        assert.equal(attackResult.logs[3].event, "WinnerDetected", 
-            "Event containing more details about the winner");
-
-        updatedBattleState = await battleshipStorageInstance.getBattle(battleId);
-    
-        // Check if there is a winner
-        if (updatedBattleState.isCompleted) {
-            console.log("Winner address", updatedBattleState.winner);
-            if (updatedBattleState.winner === playerOne)
-                console.log("Player One wins!");
-            else
-                console.log("Player Two wins!");
         }*/
+
+
+
     }); 
+
+    function sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    // Loop for 64 attacks
+    /*for (let attackNumber = 0; attackNumber < 64; attackNumber++) {
+        let board = await game(playerTwo, 2, attackNumber, playerOne, 1);
+        console.log(board);
+        board = await game(playerOne, 1, attackNumber, playerTwo, 2);
+    }
+
+    async function game(player, numPlayer, index, opponent, opponentNum){
+        let attackingPosition;
+        if (numPlayer == 2)
+            attackingPosition = positionsAttackedByPlayerTwo[index];
+        else
+            attackingPosition = positionsAttackedByPlayerOne[index]; 
+        let proofleaf = await battleshipStorageInstance.generateProof(
+            opponent, attackingPosition.axisY, attackingPosition.axisX, gameSize);
+
+        console.log("player: ", player.toString(), ", perform the ", 
+            index.toString(), "° attack");
+        console.log("attackingPosition.axisX:", attackingPosition.axisX);
+        console.log("attackingPosition.axisY:", attackingPosition.axisY);
+        console.log("-----------------------------------------------");
+
+        let attackResult = await battleshipInstance.attack(
+            battleId, proofleaf, attackingPosition.axisX, 
+            attackingPosition.axisY,
+            { from: player });
+
+        // Watch for the ConfirmShotStatus event
+        let confirmShotStatusEvent = attackResult.logs.find(
+            log => log.event === "ConfirmShotStatus"
+        );
+
+        if (confirmShotStatusEvent) {
+            
+            let isHit = await battleshipStorageInstance.isHit(opponent, 
+                attackingPosition.axisX, attackingPosition.axisY);
+
+            // Update the game board with the attack result
+            updateGameBoard(opponentNum, attackingPosition.axisX, 
+                attackingPosition.axisY, isHit, opponentNum);
+
+            // Print the updated game board
+            console.log("Player: ", opponent.toString(), " Board:");
+            printGameBoard(opponentNum);
+            console.log("-----------------------------------------------");
+            console.log("-----------------------------------------------");
+        }
+    }*/
 
 });

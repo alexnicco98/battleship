@@ -11,7 +11,7 @@ contract BattleshipStorage {
     uint8 private gridDimensionN = 8;
     uint8 private numShips = 4;
     uint256 private gameId;
-    uint256 private maxTime = 4 seconds; // 3 minutes;
+    uint256 private maxTime = 3 minutes; // 3 minutes;
     uint256 private maxNumberOfMissiles;
     uint256 private minStakingAmount = uint(0.0001 ether);
     uint256 private totalNumberOfPlayers;
@@ -160,13 +160,24 @@ contract BattleshipStorage {
         return nodes[nodes.length - 1];
     }
 
+    function log2(uint256 x) internal pure returns (uint256) {
+        require(x > 0, "Input must be greater than zero");
+
+        uint256 result = 0;
+        while (x > 1) {
+            x >>= 1;
+            result += 1;
+        }
+        return result;
+    }
+
     function calculateMerkleRoot(bytes32[][] memory _leaves, address _player)
     external returns (bytes32) {
-        require(_leaves.length > 0, "At least one leaf is required");
+        require(_leaves.length == gridDimensionN, "leaves sgould be of dimension gridDimensionN");
         bytes32[] storage nodes = merkleNodes[_player];
 
         uint256 n = gridDimensionN;
-        uint256 dim = n * 2;
+        uint256 dim = (n * n) / 2;
         uint256 index = 0;
         bytes32[] memory newRow = new bytes32[](dim);
 
@@ -255,27 +266,114 @@ contract BattleshipStorage {
             require(axisY < n && axisX < n, "Invalid leaf coordinates");
 
             bytes32[] storage nodes = merkleNodes[_player];
-            bytes32[] memory proof = new bytes32[](n);
+            bytes32[] memory proof = new bytes32[](n - 2);
 
             // Calculate the initial index based on the provided coordinates
-            uint256 index = axisY * 2 + (axisX % 2 == 0 ? 0 : 1);
+            uint256 index = axisY * 2; 
+            if (axisX == 2)
+                index = index + 1; 
+            uint256 elements = (n* n) / 2; // 32
+            uint256 offset = elements; // 32
 
-            uint256 offset = n * 2;
-            
-            for (uint256 i = 0; i < n - 1; i++) {
-                // Calculate the parent index for each level
-                if (index % 2 == 0) {
-                    index = offset + (index / 2);
-                } else {
-                    index = offset + ((index - 1) / 2);
-                }
-                offset = offset + (offset / 2);
+            // first level have 32 elements
+            proof[0] = nodes[index];
+            // Calculate the parent index
+            if (index == 0 || index == 1) {
+                index = offset;
+            } else if (index == 2 || index == 3) {
+                index = offset + 1;
+            } else if (index == 4 || index == 5) {
+                index = offset + 2;
+            } else if (index == 6 || index == 7){
+                index = offset + 3;
+            } else if (index == 8 || index == 9){
+                index = offset + 4;
+            } else if (index == 10 || index == 11){
+                index = offset + 5;
+            } else if (index == 12 || index == 13){
+                index = offset + 6;
+            } else if (index == 14 || index == 15){
+                index = offset + 7;
+            } else if (index == 16 || index == 17){
+                index = offset + 8;
+            } else if (index == 18 || index == 19){
+                index = offset + 9;
+            } else if (index == 20 || index == 21){
+                index = offset + 10;
+            } else if (index == 22 || index == 23){
+                index = offset + 11;
+            } else if (index == 24 || index == 25){
+                index = offset + 12;
+            } else if (index == 26 || index == 27){
+                index = offset + 13;
+            } else if (index == 28 || index == 29){
+                index = offset + 14;
+            } else if (index == 30 || index == 31){
+                index = offset + 15;
+            }
+            offset = offset + (elements / 2); 
+            elements = elements / 2; // 16
 
-                proof[i] = nodes[index];
+            // second level 16 elements
+            proof[1] = nodes[index];
+            // Calculate the parent index
+            if (index == 32 || index == 33) {
+                index = offset;
+            } else if (index == 34 || index == 35) {
+                index = offset + 1;
+            } else if (index == 36 || index == 37) {
+                index = offset + 2;
+            } else if (index == 38 || index == 39) {
+                index = offset + 3;
+            } else if (index == 40 || index == 41) {
+                index = offset + 4;
+            } else if (index == 42 || index == 43) {
+                index = offset + 5;
+            } else if (index == 44 || index == 45) {
+                index = offset + 6;
+            } else if (index == 46 || index == 47) {
+                index = offset + 7;
+            }
+            offset = offset + (elements / 2);
+            elements = elements / 2; // 8
+
+            // third level 8 elements
+            proof[2] = nodes[index];
+            // Calculate the parent index
+            if (index == 48 || index == 49) {
+                index = offset;
+            } else if (index == 50 || index == 51) {
+                index = offset + 1;
+            } else if (index == 50 || index == 51) {
+                index = offset + 1;
+            } else if (index == 52 || index == 53) {
+                index = offset + 2;
+            } else if (index == 54 || index == 55) {
+                index = offset + 3;
+            }
+            offset = offset + (elements / 2);
+            elements = elements / 2; // 4
+
+            // fourth level 4 elements
+            proof[3] = nodes[index];
+            // Calculate the parent index
+            if (index == 56 || index == 57) {
+                index = offset;
+            } else if (index == 58 || index == 59) {
+                index = offset + 1;
+            }
+            offset = offset + (elements / 2);
+            elements = elements / 2; // 2
+
+            // fifth level 2 elements
+            proof[4] = nodes[index];
+            // Calculate the parent index
+            if (index == 60 || index == 61) {
+                index = offset;
             }
 
-            // The last level is always the root
-            proof[n - 1] = nodes[nodes.length - 1];
+            // the last level is always the root
+            proof[5] = nodes[nodes.length - 1];
 
             return proof;
         }else{
@@ -336,30 +434,115 @@ contract BattleshipStorage {
 
             bytes32[] storage nodes = merkleNodes[_player];
 
-            // Calculate the initial index based on the provided coordinates
-            uint256 index = axisY * 2 + (axisX % 2 == 0 ? 0 : 1);
+            uint256 index = axisY * 2; 
+            if (axisX == 2)
+                index = index + 1; 
+            uint256 elements = (n * n) / 2; // 32
+            uint256 offset = elements; // 32
 
-            uint256 offset = n * 2;
-
-            for (uint256 i = 0; i < n - 1; i++) {
-                // Check if the proof element matches the node
-                if (_proof[i] != nodes[index]) {
-                    return false;
-                }
-
-                // Calculate the parent index for each level
-                if (index % 2 == 0) {
-                    index = offset + (index / 2);
-                } else {
-                    index = offset + ((index - 1) / 2);
-                }
-                offset = offset + (offset / 2);
-            }
-
-            // Check if the proof for the last level matches the root
-            if (_proof[n - 1] != nodes[nodes.length - 1]) {
+            // Verify the first level
+            if(_proof[0] != nodes[index])
                 return false;
+            // Calculate the parent index
+            if (index == 0 || index == 1) {
+                index = offset;
+            } else if (index == 2 || index == 3) {
+                index = offset + 1;
+            } else if (index == 4 || index == 5) {
+                index = offset + 2;
+            } else if (index == 6 || index == 7){
+                index = offset + 3;
+            } else if (index == 8 || index == 9){
+                index = offset + 4;
+            } else if (index == 10 || index == 11){
+                index = offset + 5;
+            } else if (index == 12 || index == 13){
+                index = offset + 6;
+            } else if (index == 14 || index == 15){
+                index = offset + 7;
+            } else if (index == 16 || index == 17){
+                index = offset + 8;
+            } else if (index == 18 || index == 19){
+                index = offset + 9;
+            } else if (index == 20 || index == 21){
+                index = offset + 10;
+            } else if (index == 22 || index == 23){
+                index = offset + 11;
+            } else if (index == 24 || index == 25){
+                index = offset + 12;
+            } else if (index == 26 || index == 27){
+                index = offset + 13;
+            } else if (index == 28 || index == 29){
+                index = offset + 14;
+            } else if (index == 30 || index == 31){
+                index = offset + 15;
             }
+            offset = offset + (elements / 2); 
+            elements = elements / 2; // 16
+
+            // Verify the second level
+            if(_proof[1] != nodes[index])
+                return false;
+            // Calculate the parent index
+            if (index == 32 || index == 33) {
+                index = offset;
+            } else if (index == 34 || index == 35) {
+                index = offset + 1;
+            } else if (index == 36 || index == 37) {
+                index = offset + 2;
+            } else if (index == 38 || index == 39) {
+                index = offset + 3;
+            } else if (index == 40 || index == 41) {
+                index = offset + 4;
+            } else if (index == 42 || index == 43) {
+                index = offset + 5;
+            } else if (index == 44 || index == 45) {
+                index = offset + 6;
+            } else if (index == 46 || index == 47) {
+                index = offset + 7;
+            }
+            offset = offset + (elements / 2);
+            elements = elements / 2; // 8
+
+            // Verify the third level
+            if(_proof[2] != nodes[index])
+                return false;
+            // Calculate the parent index
+            if (index == 48 || index == 49) {
+                index = offset;
+            } else if (index == 50 || index == 51) {
+                index = offset + 1;
+            } else if (index == 52 || index == 53) {
+                index = offset + 2;
+            } else if (index == 54 || index == 55) {
+                index = offset + 3;
+            }
+            offset = offset + (elements / 2);
+            elements = elements / 2; // 4
+
+            // Verify the fourth level
+            if(_proof[3] != nodes[index])
+                return false;
+            // Calculate the parent index
+            if (index == 56 || index == 57) {
+                index = offset;
+            } else if (index == 58 || index == 59) {
+                index = offset + 1;
+            }
+            offset = offset + (elements / 2);
+            elements = elements / 2; // 2
+
+            // Verify the fifth level
+            if(_proof[4] != nodes[index])
+                return false;
+            // Calculate the parent index
+            if (index == 60 || index == 61) {
+                index = offset;
+            }
+
+            // Verify the last level (root)
+            if(_proof[5] != nodes[nodes.length - 1])
+                return false;
 
             return true;
         }else{
@@ -650,6 +833,12 @@ contract BattleshipStorage {
     }
     
     function setLastPlayTimeByBattleId(uint256 _battleId, uint256 _playTime) 
+    external returns (bool){
+        lastPlayTime[_battleId] = _playTime;
+        return true;
+    }
+
+    function setLastPlayTimeFirstTime(uint256 _battleId, uint256 _playTime) 
     external returns (bool){
         lastPlayTime[_battleId] = _playTime;
         currentPlayer = battles[_battleId].client;

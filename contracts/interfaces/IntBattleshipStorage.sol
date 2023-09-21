@@ -39,6 +39,8 @@ interface IntBattleshipStorage {
     
     function getLastPlayTimeByBattleId(uint256 _battleId) 
         external view returns (uint256);
+    function setLastPlayTimeFirstTime(uint256 _battleId, uint256 _playTime) 
+        external returns (bool);
     function setLastPlayTimeByBattleId(uint256 _battleId, uint256 _playTime) 
         external returns (bool);
 
