@@ -12,6 +12,7 @@ contract("Battleship", accounts => {
     let battleId;
     let playerOne = accounts[0];
     let playerTwo = accounts[1];
+    const gameSize = 4;
 
     console.log("player One adrress: ", playerOne);
     console.log("player Two adrress: ", playerTwo);
@@ -217,7 +218,8 @@ contract("Battleship", accounts => {
 
         let attackingPosition = positionsAttackedByPlayerTwo[0]; 
         let proofleaf = await battleshipStorageInstance.generateProof(
-            playerOne, attackingPosition.axisY, attackingPosition.axisX);
+            playerOne, attackingPosition.axisY, attackingPosition.axisX,
+            gameSize);
         // Get the current state of the battle
         let initialBattleState = await battleshipStorageInstance.getBattle(battleId);
 
@@ -260,7 +262,8 @@ contract("Battleship", accounts => {
         // playerOne perform the 1° attack
         attackingPosition = positionsAttackedByPlayerOne[0];
         proofleaf = await battleshipStorageInstance.generateProof(
-            playerTwo, attackingPosition.axisY, attackingPosition.axisX);
+            playerTwo, attackingPosition.axisY, attackingPosition.axisX,
+            gameSize);
         
         console.log("playerOne perform the 1° attack");
         console.log("attackingPosition.axisX:", attackingPosition.axisX);
@@ -310,10 +313,9 @@ contract("Battleship", accounts => {
         // ------------------------------------------------------------------
         // playerTwo perform the 2° attack
         attackingPosition = positionsAttackedByPlayerTwo[1];
-        currentPositionLeafAttackedByPlayerTwo = await battleshipStorageInstance.
-            getMerkleTreeLeaf(playerOne, attackingPosition.axisX, attackingPosition.axisY);
         proofleaf = await battleshipStorageInstance.generateProof(
-            playerOne, attackingPosition.axisY, attackingPosition.axisX);
+            playerOne, attackingPosition.axisY, attackingPosition.axisX,
+            gameSize);
         
         console.log("playerTwo perform the 2° attack");
         console.log("attackingPosition.axisX:", attackingPosition.axisX);
@@ -345,7 +347,8 @@ contract("Battleship", accounts => {
         
 
         proofleaf = await battleshipStorageInstance.generateProof(
-            playerTwo, attackingPosition.axisY, attackingPosition.axisX);
+            playerTwo, attackingPosition.axisY, attackingPosition.axisX,
+            gameSize);
         
         console.log("playerOne perform the 2° attack");
         console.log("attackingPosition.axisX:", attackingPosition.axisX);
@@ -378,10 +381,9 @@ contract("Battleship", accounts => {
         // ------------------------------------------------------------------
         // playerTwo perform the 3° attack
         attackingPosition = positionsAttackedByPlayerTwo[2];
-        currentPositionLeafAttackedByPlayerTwo = await battleshipStorageInstance.
-            getMerkleTreeLeaf(playerOne, attackingPosition.axisX, attackingPosition.axisY);
         proofleaf = await battleshipStorageInstance.generateProof(
-            playerOne, attackingPosition.axisY, attackingPosition.axisX);
+            playerOne, attackingPosition.axisY, attackingPosition.axisX,
+            gameSize);
 
         console.log("playerTwo perform the 3° attack");
         console.log("attackingPosition.axisX:", attackingPosition.axisX);
@@ -415,7 +417,8 @@ contract("Battleship", accounts => {
         // playerOne perform the 3° attack
         attackingPosition = positionsAttackedByPlayerOne[2];
         proofleaf = await battleshipStorageInstance.generateProof(
-            playerTwo, attackingPosition.axisY, attackingPosition.axisX);
+            playerTwo, attackingPosition.axisY, attackingPosition.axisX,
+            gameSize);
 
         console.log("playerOne perform the 3° attack");
         console.log("attackingPosition.axisX:", attackingPosition.axisX);
@@ -450,10 +453,9 @@ contract("Battleship", accounts => {
         // the player try to cheat
 
         attackingPosition = positionsAttackedByPlayerTwo[2];
-        currentPositionLeafAttackedByPlayerTwo = await battleshipStorageInstance.
-            getMerkleTreeLeaf(playerOne, attackingPosition.axisX, attackingPosition.axisY);
         proofleaf = await battleshipStorageInstance.generateProof(
-            playerOne, attackingPosition.axisY, attackingPosition.axisX);
+            playerOne, attackingPosition.axisY, attackingPosition.axisX,
+            gameSize);
 
         console.log("playerTwo perform the 4° attack");
         console.log("attackingPosition.axisX:", attackingPosition.axisX);
@@ -488,7 +490,7 @@ contract("Battleship", accounts => {
         assert.equal(attackResult.logs[2].event, "StakeFrozen", 
             "Event containing more details about the cheat of the player");
 
-        assert.equal(attackResult.logs[3].event, "StakeRefunded", 
+        assert.equal(attackResult.logs[3].event, "PenaltyApplied", 
             "Event containing more details about the refund of the opposite cheat player");
 
         updatedBattleState = await battleshipStorageInstance.getBattle(battleId);

@@ -16,9 +16,9 @@ import "./libraries/IntBattleshipStruct.sol";
 
 contract Battleship {
 
-    IntBattleshipStorage dataStorage;
+    IntBattleshipStorage immutable dataStorage;
     address public currentPlayer;
-    address owner;
+    address immutable owner;
     uint deposit;
     mapping(uint256 => mapping(address => mapping(string => bool))) myMapping;
 
@@ -118,9 +118,8 @@ contract Battleship {
         uint totalStake = gamePhaseDetail.stake * 2;
         battleId = dataStorage.createNewGameId();
         IntBattleshipStruct.BattleModel memory battle  = IntBattleshipStruct.BattleModel(totalStake, lobby.occupant, player, 
-            block.timestamp, player, false, false, false, address(0), IntBattleshipStruct.GamePhase.Shooting, 
-            gamePhaseDetail.maxTimeForPlayerToPlay, false, 0, block.timestamp, 
-            block.timestamp, false, false);       
+            player, false, false, false, false, address(0), IntBattleshipStruct.GamePhase.Shooting, 
+            gamePhaseDetail.maxTimeForPlayerToPlay,block.timestamp);       
         
         // Set the merkle tree root for both players.
         dataStorage.setMerkleTreeRootByBattleIdAndPlayer(battleId, battle.host, lobby.playerOneRootHash);
@@ -167,14 +166,13 @@ contract Battleship {
         uint256 timeElapsed = currentTime - lastPlayTime;
 
         if (timeElapsed > gamePhaseDetail.maxTimeForPlayerToPlay) {
-
-            //emit LogMessage("time Elapsed");
             
-            // Freeze the deposit
+            // Freeze the deposit and apply a penalty
             freezeDeposit(_battleId, player);
-
-            // Emit an event indicating the penalty
             emit PenaltyApplied(_battleId, player, gamePhaseDetail.penaltyAmount);
+
+            // Allow the opponent to withdraw their stake
+            withdrawStake(_battleId);
             
             return false;
         }
@@ -182,6 +180,8 @@ contract Battleship {
         require(!battle.isCompleted, "A winner has been detected. Proceed to verify inputs");
         require(nextTurn == player, "Wait till next turn");
         require(proofValidity, "The proof and position combination indicates an invalid move");
+        // Ensure that opponent is not a zero address
+        require(opponent != address(0), "Invalid opponent address");
 
         // Update the position index to the list of fired locations
         dataStorage.setPositionsAttackedByBattleIdAndPlayer(_battleId, player, 
@@ -211,6 +211,7 @@ contract Battleship {
         return true;
     }
 
+    /** TODO: check if I can solve the red static analysis problems **/
     function freezeDeposit(uint256 _battleId, address _player) internal {
         IntBattleshipStruct.BattleModel memory battle = dataStorage.getBattle(_battleId);
         IntBattleshipStruct.GamePhaseDetail memory gamePhaseDetail = dataStorage.getGamePhaseDetails(battle.gamePhase);
@@ -230,25 +231,42 @@ contract Battleship {
             revert("Invalid player address.");
         }
 
-        // Refund the opponent's stake
-        address opponent = (_player == battle.host) ? battle.client : battle.host;
         // Ensure that the opponent's stake is not already frozen
         require(!(battle.hostStakeFrozen && battle.clientStakeFrozen), "Both players' stakes are frozen.");
         
-        // Transfer the opponent's stake back to them
-        (bool success, ) = opponent.call{value: gamePhaseDetail.stake}("");
-        require(success, "Transfer failed.");
+        // Mark the opponent's stake as refundable
+        battle.opponentStakeRefundable = true;
 
-        // Emit events to log the freezing and refunding of stakes
+        dataStorage.updateBattleById(_battleId, battle, IntBattleshipStruct.GamePhase.Gameover);
+
+        // Emit an event to log the freezing of stakes
         emit StakeFrozen(_battleId, _player, gamePhaseDetail.stake);
+    }
+
+    function withdrawStake(uint256 _battleId) internal {
+        IntBattleshipStruct.BattleModel memory battle = dataStorage.getBattle(_battleId);
+        IntBattleshipStruct.GamePhaseDetail memory gamePhaseDetail = dataStorage.getGamePhaseDetails(battle.gamePhase);
+
+        // Ensure that the opponent's stake is refundable
+        require(battle.opponentStakeRefundable, "Stake is not refundable yet.");
+
+        address opponent = (msg.sender == battle.host) ? battle.client : battle.host;
+
+        // Mark the opponent's stake as refunded
+        battle.opponentStakeRefundable = false;
+
+        // Transfer the opponent's stake back to them
+        payable(opponent).transfer(gamePhaseDetail.stake);
+
+        // Emit an event to log the refunding of stakes
         emit StakeRefunded(_battleId, opponent, gamePhaseDetail.stake);
     }
 
 
-    function getPositionsAttacked(uint _battleId, address _player) 
+    /*function getPositionsAttacked(uint _battleId, address _player) 
     public view returns(uint8[2] memory){
         return dataStorage.getLastPositionsAttackedByBattleIdAndPlayer(_battleId, _player);
-    }
+    }*/
     
     // Checks if there is a winner in the game
     function checkForWinner(uint _battleId, address _playerAddress, address _opponentAddress, 
@@ -268,13 +286,14 @@ contract Battleship {
         if(correctPositionsHit.length == dataStorage.getSumOfShipSize()){
             // check if the positions are valid
             if (!areAllPositionsUnique(correctPositionsAttacked, _playerAddress, _battleId)) {
-                // Freeze the deposit
-                freezeDeposit(_battleId, _playerAddress);
-                
                 IntBattleshipStruct.GamePhaseDetail memory gamePhaseDetail = dataStorage.getGamePhaseDetails(
                     battle.gamePhase);
-                // Emit an event indicating the penalty
+                // Freeze the deposit
+                freezeDeposit(_battleId, _playerAddress);
                 emit PenaltyApplied(_battleId, _playerAddress, gamePhaseDetail.penaltyAmount);
+
+                // Allow the opponent to withdraw their stake
+                withdrawStake(_battleId);
 
                 // Tho opposite player win, because the player cheat
                 battle.isCompleted = true;
@@ -326,15 +345,23 @@ contract Battleship {
         
         // Get the total reward
         uint totalReward = gamePhaseDetail.stake *  2;
-        transfer(playerAddress, totalReward);
+        transfer(payable(playerAddress), totalReward);
         
         return true;
     }
   
-    function transfer(address _recipient, uint _amount) private {
-         (bool success, ) = _recipient.call{value : _amount}("");
-         require(success, "Transfer failed.");
-         emit Transfer(_recipient, _amount, address(this).balance);
+    function transfer(address payable _recipient, uint256 _amount) private {
+        // Ensure the recipient address is valid
+        require(_recipient != address(0), "Invalid recipient address.");
+
+        // Ensure the contract has enough balance to transfer
+        require(address(this).balance >= _amount, "Insufficient contract balance.");
+
+        // Transfer Ether to the recipient using transfer
+        _recipient.transfer(_amount);
+
+        // Emit an event to log the transfer
+        emit Transfer(_recipient, _amount, address(this).balance);
     }
 
     function uintToString(uint256 value) internal pure returns (string memory) {

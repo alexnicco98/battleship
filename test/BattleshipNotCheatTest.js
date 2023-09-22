@@ -11,6 +11,7 @@ contract("Battleship", accounts => {
     let battleId;
     let playerOne = accounts[0];
     let playerTwo = accounts[1];
+    const gameSize = 4;
 
     console.log("player One adrress: ", playerOne);
     console.log("player Two adrress: ", playerTwo);
@@ -226,7 +227,8 @@ contract("Battleship", accounts => {
 
         let attackingPosition = positionsAttackedByPlayerTwo[0]; 
         let proofleaf = await battleshipStorageInstance.generateProof(
-            playerOne, attackingPosition.axisY, attackingPosition.axisX);
+            playerOne, attackingPosition.axisY, attackingPosition.axisX,
+            gameSize);
 
         console.log("playerTwo perform the 1° attack");
         console.log("attackingPosition.axisX:", attackingPosition.axisX);
@@ -289,7 +291,8 @@ contract("Battleship", accounts => {
         attackingPosition = positionsAttackedByPlayerOne[0];
         proof = await battleshipStorageInstance.getMerkleTreeProof(playerTwo);
         proofleaf = await battleshipStorageInstance.generateProof(
-            playerTwo, attackingPosition.axisY, attackingPosition.axisX);
+            playerTwo, attackingPosition.axisY, attackingPosition.axisX,
+            gameSize);
         proof = await battleshipStorageInstance.getMerkleTreeProof(playerOne);
         
         console.log("playerOne perform the 1° attack after the time is elapsed");
@@ -304,9 +307,10 @@ contract("Battleship", accounts => {
             assert.equal(attackResult.receipt.logs[0].event, 
                 "StakeFrozen", "Expected StakeFrozen event for playerOne");
             assert.equal(attackResult.receipt.logs[1].event, 
-                "StakeRefunded", "Expected StakeRefunded event for playerOne");
-            assert.equal(attackResult.receipt.logs[2].event, 
                 "PenaltyApplied", "Expected PenaltyApplied event for playerOne");
+            assert.equal(attackResult.receipt.logs[2].event, 
+                "StakeRefunded", "Expected StakeRefunded event for playerOne");
+            
             console.log("All the events that indicates that the time is elapsed, are correctly emitted");
         } else {
             // Handle the case where there are no logs

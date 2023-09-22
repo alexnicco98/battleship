@@ -8,22 +8,15 @@ contract BattleshipStorage {
     
     // in the next development, should be a non-fixed variable that
     // the host player chose at the moment of creation of the game
-    uint8 private gridDimensionN = 8;
-    uint8 private numShips = 4;
+    uint8 private gridDimensionN = 4;
+    uint8 constant numShips = 2;
     uint256 private gameId;
-    uint256 private maxTime = 3 minutes; // 3 minutes;
-    uint256 private maxNumberOfMissiles;
-    uint256 private minStakingAmount = uint(0.0001 ether);
-    uint256 private totalNumberOfPlayers;
-    address payable private owner;
+    uint256 constant maxTime = 4 seconds; // 3 minutes;
+    uint256 private immutable maxNumberOfMissiles;
+    uint256 constant minStakingAmount = uint(0.0001 ether);
     address private currentPlayer;
-    address public sender;
-    uint256 private rewardCommissionRate;
-    uint256 private cancelCommissionRate;
-    bool private isTest;
     uint8 public sumOfShipSizes = 0;
     uint8 private gridSquare;
-    address public battleShipContractAddress;
     mapping(uint256 => IntBattleshipStruct.BattleModel) public battles; // saved on the blockchain
     mapping(address => IntBattleshipStruct.PlayerModel) private players;
     mapping(uint256 => mapping(address => uint8[2][])) private positionsAttacked;
@@ -41,30 +34,9 @@ contract BattleshipStorage {
     event PlayerCheating(address _player);
     event Print();
 
-    modifier onlyOwner() {
-        string memory text = string(abi.encodePacked("BattleshipStorage: Only the owner can execute this transaction, ", addressToString(msg.sender)));
-        require(msg.sender == owner, text);
-        _;
-    }
-
-   /* modifier onlyCurrentPlayer() {
-        //string memory text = string(abi.encodePacked("BattleshipStorage: Only the current player can execute this transaction ", addressToString(msg.sender)));
-        require(msg.sender == currentPlayer, addressToString(msg.sender) );
-        _;
-    }*/
-
-    modifier onlyAuthorized() {
-        //address sender = msg.sender;
-        bool isBattleShipContract = sender == battleShipContractAddress;
-        require(isBattleShipContract || isTest, "Unauthorized access");
-        _;
-    }
-
-    constructor(bool _isTest) { 
+    constructor() { 
         gameId = 0;
         maxNumberOfMissiles = gridDimensionN * gridDimensionN;
-        isTest = _isTest;
-
         gamePhaseMapping[IntBattleshipStruct.GamePhase.Placement] = 
             IntBattleshipStruct.GamePhaseDetail(minStakingAmount, 
             minStakingAmount, IntBattleshipStruct.GamePhase.Placement, 
@@ -96,7 +68,7 @@ contract BattleshipStorage {
     }
 
     // generate a random ship direction
-    function generateRandomDirection() private view returns (IntBattleshipStruct.ShipDirection) {
+    /*function generateRandomDirection() private view returns (IntBattleshipStruct.ShipDirection) {
         uint8 randomValue = uint8(uint256(keccak256(abi.encodePacked(block.timestamp, block.difficulty))) % 2);
         if (randomValue == 0) {
             return IntBattleshipStruct.ShipDirection.Vertical;
@@ -128,7 +100,7 @@ contract BattleshipStorage {
         }
 
         return (axisX, axisY);
-    }
+    }*/
 
     // Function to create Merkle tree leaf
     function createMerkleTreeLeaf(uint256 _state, address _player) 
@@ -174,7 +146,6 @@ contract BattleshipStorage {
     function calculateMerkleRoot(bytes32[][] memory _leaves, address _player)
     external returns (bytes32) {
         require(_leaves.length == gridDimensionN, "leaves sgould be of dimension gridDimensionN");
-        bytes32[] storage nodes = merkleNodes[_player];
 
         uint256 n = gridDimensionN;
         uint256 dim = (n * n) / 2;
@@ -184,7 +155,7 @@ contract BattleshipStorage {
         for (uint256 i = 0; i < n ; i++) {
             for (uint256 j = 0; j < n ; j+=2) {
                 newRow[index] = sha256(abi.encodePacked(_leaves[i][j], _leaves[i][j + 1]));
-                nodes.push(newRow[index]);
+                merkleNodes[_player].push(newRow[index]);
                 index++;
             } 
         }
@@ -194,7 +165,6 @@ contract BattleshipStorage {
     function calculateMerkleRootInternal(bytes32[] memory _nodes, address _player) 
     internal returns (bytes32) {
         uint256 n = _nodes.length;
-        bytes32[] storage nodes = merkleNodes[_player];
 
         if (n == 1) {
             return _nodes[0];
@@ -208,7 +178,7 @@ contract BattleshipStorage {
         for (uint256 i = 0; i < n - 1; i += 2) {
             require(index < parents.length, "Index should be less that the size of the array");
             parents[index] = sha256(abi.encodePacked(_nodes[i], _nodes[i + 1]));
-            nodes.push(parents[index]);
+            merkleNodes[_player].push(parents[index]);
             index++;
         }
 
@@ -552,7 +522,7 @@ contract BattleshipStorage {
 
     // Logic related function
 
-    function getNumShips() external view returns (uint8){
+    function getNumShips() external pure returns (uint8){
         return numShips;
     }
 
@@ -636,8 +606,6 @@ contract BattleshipStorage {
         require(shipLengths.length == axisXs.length && axisXs.length == axisYs.length && 
             axisYs.length == directions.length, "Arrays length mismatch");
 
-        IntBattleshipStruct.PlayerModel storage playerModel = players[player];
-
         for (uint8 i = 0; i < numShips; i++) {
             IntBattleshipStruct.ShipPosition memory newShip = IntBattleshipStruct.ShipPosition({
                 shipLength: shipLengths[i],
@@ -646,21 +614,22 @@ contract BattleshipStorage {
                 direction: directions[i],
                 state: IntBattleshipStruct.ShipState.Intact
             });
-            playerModel.shipPositions.push(newShip);
+            players[player].shipPositions.push(newShip);
             // anti-cheat check
-            if( playerModel.shipPositions.length > numShips){
+            if( players[player].shipPositions.length > numShips){
                 // I set the revert because the game when I call this function is not
                 // set yet, and so should be too difficult to set it only to allow 
                 // the opposite player to win (consequnce of the cheat)
                 revert("The number of ships allowed must be respected!");
             }
         }
-        transformShipPosition(playerModel, player);
+        transformShipPosition(player);
     }
 
-    function transformShipPosition(IntBattleshipStruct.PlayerModel storage _playerModel, address _player) 
+    function transformShipPosition( address _player) 
     internal {
         bool[][] memory shipMatrix = new bool[][](gridDimensionN);
+        uint8 checkDim = 0;
 
         for (uint8 i = 0; i < gridDimensionN; i++) {
             shipMatrix[i] = new bool[](gridDimensionN);
@@ -670,9 +639,10 @@ contract BattleshipStorage {
         }
 
         for (uint8 i = 0; i < numShips; i++) {
-            IntBattleshipStruct.ShipPosition memory ship = _playerModel.shipPositions[i];
+            IntBattleshipStruct.ShipPosition memory ship = players[_player].shipPositions[i];
 
             uint8 shipLength = ship.shipLength;
+            checkDim += shipLength;
             uint8 axisX = ship.axisX;
             uint8 axisY = ship.axisY;
             IntBattleshipStruct.ShipDirection direction = ship.direction;
@@ -684,7 +654,7 @@ contract BattleshipStorage {
                 for (uint8 j = axisX; j < axisX + shipLength; j++) {
                     //emit LogsMessage("Placing ship at", uint8ToString(j), uint8ToString(axisY));
                     shipMatrix[axisY][j] = true;
-                    updatePlayerLeafIndexes(_playerModel, j, axisY, i);
+                    updatePlayerLeafIndexes(_player, j, axisY, i);
                 }
             } else if (direction == IntBattleshipStruct.ShipDirection.Vertical) {
                 if (axisY + shipLength > gridDimensionN) {
@@ -693,10 +663,12 @@ contract BattleshipStorage {
                 for (uint8 j = axisY; j < axisY + shipLength; j++) {
                     //emit LogsMessage("Placing ship at", uint8ToString(axisX), uint8ToString(j));
                     shipMatrix[j][axisX] = true;
-                    updatePlayerLeafIndexes(_playerModel, axisX, j, i);
+                    updatePlayerLeafIndexes(_player, axisX, j, i);
                 }
             }
         }
+        if (checkDim != sumOfShipSizes)
+            revert("Ship not respect the length indications");
 
         for (uint8 i = 0; i < gridDimensionN; i++) {
             bytes32[] memory temporaryLeaf = new bytes32[](gridDimensionN);
@@ -704,15 +676,15 @@ contract BattleshipStorage {
                 temporaryLeaf[j] = shipMatrix[i][j] ? createMerkleTreeLeaf(1, _player) : 
                 createMerkleTreeLeaf(0, _player);
             }
-            _playerModel.leaves.push(temporaryLeaf);
+            players[_player].leaves.push(temporaryLeaf);
         }
     }
 
-    function updatePlayerLeafIndexes(IntBattleshipStruct.PlayerModel storage player, uint8 leafIndexX,
-    uint8 leafIndexY,uint8 leafIndexShipPosition) internal {
-        player.leafIndexX.push(leafIndexX);
-        player.leafIndexY.push(leafIndexY);
-        player.leafIndexShipPosition.push(leafIndexShipPosition);
+    function updatePlayerLeafIndexes(address _player, uint8 _leafIndexX,
+    uint8 _leafIndexY,uint8 _leafIndexShipPosition) internal {
+        players[_player].leafIndexX.push(_leafIndexX);
+        players[_player].leafIndexY.push(_leafIndexY);
+        players[_player].leafIndexShipPosition.push(_leafIndexShipPosition);
     }
 
     function uint8ToString(uint8 _num) internal pure returns (string memory) {
@@ -749,7 +721,7 @@ contract BattleshipStorage {
         }
     }
 
-     function getShipLenghtFromIndex(uint8 _index) external view returns (uint8){
+     function getShipLenghtFromIndex(uint8 _index) external pure returns (uint8){
         if (_index >= 0 && _index < numShips) {
             return _index + 1;
         } else {
@@ -764,10 +736,9 @@ contract BattleshipStorage {
     }
 
     function updateBattleById(uint256 _battleId, IntBattleshipStruct.BattleModel memory _battle, 
-    IntBattleshipStruct.GamePhase _gamePhase) external onlyAuthorized returns (bool) {
-        _battle.updatedAt = block.timestamp;
+    IntBattleshipStruct.GamePhase _gamePhase) external returns (bool) {
         _battle.gamePhase = _gamePhase;
-        if (_battle.createdAt == 0) {
+        if (_battle.createdAt != 0) {
             _battle.createdAt = block.timestamp;
         }
         battles[_battleId] = _battle;
@@ -797,9 +768,8 @@ contract BattleshipStorage {
     }
 
     function setLobbyByAddress(address _player, IntBattleshipStruct.LobbyModel memory _lobbyModel) 
-    external returns (bool) {
+    external {
         lobbyMap[_player] = _lobbyModel;
-        return true;
     }
 
     // Merkle Tree related functions

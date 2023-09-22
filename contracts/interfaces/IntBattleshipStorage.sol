@@ -22,7 +22,7 @@ interface IntBattleshipStorage {
     function getLobbyByAddress(address _player) 
         external view returns (IntBattleshipStruct.LobbyModel memory);
     function setLobbyByAddress(address _player, IntBattleshipStruct.LobbyModel memory _lobby) 
-        external returns (bool);
+        external;
     
     // Merkle Tree
     

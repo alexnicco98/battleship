@@ -18,41 +18,23 @@ library IntBattleshipStruct {
     
 
     struct BattleModel {
-        uint256 stake; // Determines how much ethers was staked for this battle
-        address host; // address of the host player
-        address client; // address of the client connected
-        uint256 startTime; // Battle start time
+        uint256 stake; // Ethers was staked for this battle
+        address host; // Address of the host player
+        address client; // Address of the client connected
         address turn; // Address indicating whose turn it is to play next
-        bool isCompleted; // Indicates whether or not the battle has been completed
-        bool clientStakeFrozen; // Indicates that the client have expired his time to play
-        bool hostStakeFrozen; // Indicates that the host have expired his time to play
-        address winner; // Holds the address of the winning player;
+        bool isCompleted; // Battle has been completed
+        bool opponentStakeRefundable; // Mark the opponent's stake as refundable
+        bool clientStakeFrozen; // The client has expired his time to play
+        bool hostStakeFrozen; // The host has expired his time to play
+        address winner; // Address of the winning player;
         GamePhase gamePhase; // The game phase
-        uint256 maxTimeForPlayerDelay; // If a captain does not play after this time elapses,
-                                       // then the contract will do a random play for the captain and
-                                       // then permit the next player to play. This will be done when the
-                                       // next player decides to play.
-        bool isRewardClaimed; // Determines if the reward has been claimed by the winner;
-        uint256 claimTime; // Holds the time that the reward was claimed
+        uint256 maxTimeForPlayerDelay; // If a player does not play after this time elapses,
+                                       // then the contract will freeze the stake value of the player
+                                       // and the other will obtain the ammount
         uint256 createdAt; // Time Created
-        uint256 updatedAt; // Time last Updated
-        bool leafVerificationPassed; // Determines if the winner of the battle has passed the Leaf Verification Test
-        bool shipPositionVerificationPassed; // Determines if the winner has passed the ship position verification Test
     }
 
     struct PlayerModel {
-        string name; // Short name (up to 32 bytes)
-        uint256 matchesPlayed; // Total number of matches played
-        uint256 wins; // Total number of wins
-        uint256 losses; // Total number of losses
-        bool isVerified; // Indicates whether or not the account of 
-                         // the captain has been set up
-        uint256 numberOfGamesHosted; // Total number Of games hosted;
-        uint256 numberOfGamesJoined; // Total number of Games Joined;
-        uint256 totalStaking; // The total amount of money that has been staked
-        uint256 totalEarning; // The total amount of money that has been won
-        uint256 createdAt; // Date Last created;
-        uint256 updatedAt; // Date last updated
         ShipPosition[] shipPositions; // Array of ship positions
         uint8[] leafIndexX; // for each shipPosition I save the leaf index X
         uint8[] leafIndexY; // for each shipPosition I save the leaf index Y

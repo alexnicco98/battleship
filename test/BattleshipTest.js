@@ -12,6 +12,7 @@ contract("Battleship", accounts => {
     let battleId;
     let playerOne = accounts[0];
     let playerTwo = accounts[1];
+    const gameSize = 4;
 
     console.log("player One adrress: ", playerOne);
     console.log("player Two adrress: ", playerTwo);
@@ -44,37 +45,6 @@ contract("Battleship", accounts => {
         battleshipInstance = await Battleship.deployed();
         battleshipStorageInstance = await BattleshipStorage.deployed();
     });
-
-    // DEBUG
-    /*it("should emit StakeValue event with correct stake value", async () => {
-        const _gamePhase = GamePhase.Placement; // Replace with your actual game phase
-        
-        // Perform the emitStackValue transaction
-        let transaction = await battleshipInstance.emitStackValueFromGamePhase(_gamePhase);
-
-        // Find the emitted event in the transaction logs
-        let stakeEvent = transaction.logs.find(log => log.event === "StakeValue");
-        
-        // Access the stake value from the event
-        let emittedStakeValue = stakeEvent.args.value;
-
-        assert.equal(transaction.logs[0].event, "StakeValue", 
-        "Event must indicate that a stake values is emitted");
-
-        // Display the emitted and actual stake values
-        console.log("Emitted stake value:", emittedStakeValue.toString());
-
-        await battleshipInstance.emitStackValueFromMsgValue();
-
-        // Find the emitted event in the transaction logs
-        let stakeEventTwo = transaction.logs.find(log => log.event === "StakeValue");
-        
-        // Access the stake value from the event
-        let emittedStakeValueTwo = stakeEventTwo.args.value;
-
-        // Display the emitted and actual stake values
-        console.log("Emitted stake value 2:", emittedStakeValueTwo.toString());
-    });*/
 
     it("Should join a lobby and start a battle", async () => {
 
@@ -260,7 +230,8 @@ contract("Battleship", accounts => {
 
         let attackingPosition = positionsAttackedByPlayerTwo[0]; 
         let proofleaf = await battleshipStorageInstance.generateProof(
-            playerOne, attackingPosition.axisY, attackingPosition.axisX);
+            playerOne, attackingPosition.axisY, attackingPosition.axisX, 
+            gameSize);
         // Get the current state of the battle
         let initialBattleState = await battleshipStorageInstance.getBattle(battleId);
 
@@ -300,7 +271,8 @@ contract("Battleship", accounts => {
         // playerOne perform the 1° attack
         attackingPosition = positionsAttackedByPlayerOne[0];
         proofleaf = await battleshipStorageInstance.generateProof(
-            playerTwo, attackingPosition.axisY, attackingPosition.axisX);
+            playerTwo, attackingPosition.axisY, attackingPosition.axisX,
+            gameSize);
         
         console.log("playerOne perform the 1° attack");
         console.log("attackingPosition.axisX:", attackingPosition.axisX);
@@ -351,7 +323,8 @@ contract("Battleship", accounts => {
         // playerTwo perform the 2° attack
         attackingPosition = positionsAttackedByPlayerTwo[1];
         proofleaf = await battleshipStorageInstance.generateProof(
-            playerOne, attackingPosition.axisY, attackingPosition.axisX);
+            playerOne, attackingPosition.axisY, attackingPosition.axisX, 
+            gameSize);
         
         console.log("playerTwo perform the 2° attack");
         console.log("attackingPosition.axisX:", attackingPosition.axisX);
@@ -385,7 +358,8 @@ contract("Battleship", accounts => {
         // playerOne perform the 2° attack
         attackingPosition = positionsAttackedByPlayerOne[1];
         proofleaf = await battleshipStorageInstance.generateProof(
-            playerTwo, attackingPosition.axisY, attackingPosition.axisX);
+            playerTwo, attackingPosition.axisY, attackingPosition.axisX, 
+            gameSize);
         
         console.log("playerOne perform the 2° attack");
         console.log("attackingPosition.axisX:", attackingPosition.axisX);
@@ -419,7 +393,8 @@ contract("Battleship", accounts => {
         // playerTwo perform the 3° attack
         attackingPosition = positionsAttackedByPlayerTwo[2];
         proofleaf = await battleshipStorageInstance.generateProof(
-            playerOne, attackingPosition.axisY, attackingPosition.axisX);
+            playerOne, attackingPosition.axisY, attackingPosition.axisX,
+            gameSize);
 
         console.log("playerTwo perform the 3° attack");
         console.log("attackingPosition.axisX:", attackingPosition.axisX);
@@ -453,7 +428,8 @@ contract("Battleship", accounts => {
         // playerOne perform the 3° attack
         attackingPosition = positionsAttackedByPlayerOne[2];
         proofleaf = await battleshipStorageInstance.generateProof(
-            playerTwo, attackingPosition.axisY, attackingPosition.axisX);
+            playerTwo, attackingPosition.axisY, attackingPosition.axisX,
+            gameSize);
 
         console.log("playerOne perform the 3° attack");
         console.log("attackingPosition.axisX:", attackingPosition.axisX);
@@ -487,7 +463,8 @@ contract("Battleship", accounts => {
         // playerTwo perform the 4° attack
         attackingPosition = positionsAttackedByPlayerTwo[3];
         proofleaf = await battleshipStorageInstance.generateProof(
-            playerOne, attackingPosition.axisY, attackingPosition.axisX);
+            playerOne, attackingPosition.axisY, attackingPosition.axisX,
+            gameSize);
 
         console.log("playerTwo perform the 4° attack");
         console.log("attackingPosition.axisX:", attackingPosition.axisX);
