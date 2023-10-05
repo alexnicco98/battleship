@@ -4,14 +4,17 @@ node_modules
 src/*
 !src/App.js
 
-#configuration file
+# evalutation
+EvalutationCost/*
+
+# configuration file
 *.json
 server.js
 *.vscode
 *.github
 *.html
 
-#images
+# images
 *.png
 
 # directory

@@ -64,10 +64,12 @@ contract("BattleshipLogic", accounts => {
         await battleshipLogicInstance.setShipPositions(playerShipLengths,
             playerAxisXs, playerAxisYs, playerDirections, player);
 
-         // Verify ship positions for player one
-         for (let i = 0; i < playerPositions.length; i++) {
-             const expectedPosition = { axisX: playerPositions[i].axisX, axisY: playerPositions[i].axisY };
-             const actualPosition = await battleshipLogicInstance.getShipPosition(player, i);
+         /// Verify ship positions for player one
+            for (let i = 0; i < playerPositions.length; i++) {
+                const expectedPosition = { axisX: playerPositions[i].axisX, axisY: playerPositions[i].axisY };
+                const actualPosition = await battleshipLogicInstance.getShipPositionByAxis(
+                    player, expectedPosition.axisX, expectedPosition.axisY
+                );
  
              assert.equal(
                  actualPosition.axisX, expectedPosition.axisX,

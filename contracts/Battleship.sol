@@ -69,15 +69,15 @@ contract Battleship {
         address player = msg.sender;
         uint256 battleId = 0;
 
-        // get the Game phase
+        // Get the Game phase
         IntBattleshipStruct.GamePhaseDetail memory gamePhaseDetail = dataStorage.getGamePhaseDetails(_gamePhase);
         
-        // Require that the amount of money sent in greater or 
+        // Require that the amount of money sent is 
         // equal to the required amount for this mode.
         require(deposit == gamePhaseDetail.stake, 
             "The amount of money deposited must be equal to the staking amount for this game mode");
         
-        //Get the Lobby
+        // Get the Lobby
         IntBattleshipStruct.LobbyModel memory lobby = IntBattleshipStruct.LobbyModel({isOccupied: true, 
             occupant: player, playerOneRootHash: _root, playerTwoRootHash: 0x00
         });
@@ -125,7 +125,7 @@ contract Battleship {
         dataStorage.setMerkleTreeRootByBattleIdAndPlayer(battleId, battle.host, lobby.playerOneRootHash);
         dataStorage.setMerkleTreeRootByBattleIdAndPlayer(battleId, battle.client, _root);
         
-        //Set the Last Play Time
+        // Set the Last Play Time
         dataStorage.setLastPlayTimeFirstTime(battleId, block.timestamp);
         dataStorage.setTurnByBattleId(battleId, player);
 
@@ -156,10 +156,6 @@ contract Battleship {
 
         proofValidity = dataStorage.verifyProof(_proofLeaf, opponent, 
             _attackingPositionY, _attackingPositionX, dim);
-
-        /*string memory text = string(abi.encodePacked("player: ", addressToString(player) , ", positions that cause the cheat,axisX: ", 
-                    uintToString(_attackingPositionX), ", axisY: ", uintToString(_attackingPositionY)));
-        emit LogMessage(text);*/
 
         uint256 lastPlayTime = dataStorage.getLastPlayTimeByBattleId(_battleId);
         uint256 currentTime = block.timestamp;
@@ -211,7 +207,6 @@ contract Battleship {
         return true;
     }
 
-    /** TODO: check if I can solve the red static analysis problems **/
     function freezeDeposit(uint256 _battleId, address _player) internal {
         IntBattleshipStruct.BattleModel memory battle = dataStorage.getBattle(_battleId);
         IntBattleshipStruct.GamePhaseDetail memory gamePhaseDetail = dataStorage.getGamePhaseDetails(battle.gamePhase);
@@ -261,12 +256,6 @@ contract Battleship {
         // Emit an event to log the refunding of stakes
         emit StakeRefunded(_battleId, opponent, gamePhaseDetail.stake);
     }
-
-
-    /*function getPositionsAttacked(uint _battleId, address _player) 
-    public view returns(uint8[2] memory){
-        return dataStorage.getLastPositionsAttackedByBattleIdAndPlayer(_battleId, _player);
-    }*/
     
     // Checks if there is a winner in the game
     function checkForWinner(uint _battleId, address _playerAddress, address _opponentAddress, 
@@ -284,7 +273,7 @@ contract Battleship {
         IntBattleshipStruct.BattleModel memory battle = dataStorage.getBattle(_battleId);
         
         if(correctPositionsHit.length == dataStorage.getSumOfShipSize()){
-            // check if the positions are valid
+            // Check if the positions are valid
             if (!areAllPositionsUnique(correctPositionsAttacked, _playerAddress, _battleId)) {
                 IntBattleshipStruct.GamePhaseDetail memory gamePhaseDetail = dataStorage.getGamePhaseDetails(
                     battle.gamePhase);
@@ -300,8 +289,6 @@ contract Battleship {
                 battle.winner = _opponentAddress;
                 dataStorage.updateBattleById(_battleId, battle, IntBattleshipStruct.GamePhase.Gameover);
                 emit WinnerDetected(_battleId, _opponentAddress, _playerAddress);
-                
-                //return false;
             }else{ // A winner has been found, and the positions are valid
                 battle.isCompleted = true;
                 battle.winner = _playerAddress;
@@ -319,10 +306,8 @@ contract Battleship {
     address _player, uint256 _battleId) private returns (bool) {
 
         for (uint i = 0; i < _correctPositionsAttacked.length; i++) {
-            string memory positionKey = string(abi.encodePacked(uintToString(_correctPositionsAttacked[i][0]), "-", uintToString(_correctPositionsAttacked[i][1])));
-            /*string memory text = string(abi.encodePacked("positions that cause the cheat,axisX: ", 
-                    uintToString(positions[i].axisX), ", axisY: ", uintToString(positions[i].axisY), ", positionKey: ", positionKey));
-                emit LogMessage(text);*/
+            string memory positionKey = string(abi.encodePacked(uintToString(_correctPositionsAttacked[i][0]), "-", 
+                uintToString(_correctPositionsAttacked[i][1])));
             if (myMapping[_battleId][_player][positionKey]) {
                 // This position combination has been seen before, not all positions are unique
                 return false;
@@ -364,6 +349,8 @@ contract Battleship {
         emit Transfer(_recipient, _amount, address(this).balance);
     }
 
+    // Additional functions
+
     function uintToString(uint256 value) internal pure returns (string memory) {
         if (value == 0) {
             return "0";
@@ -383,13 +370,11 @@ contract Battleship {
         return string(buffer);
     }
 
-    // Helper function to convert address to string
     function addressToString(address addr) internal pure returns (string memory) {
         bytes32 value = bytes32(uint256(uint160(addr)));
         return bytes32ToString(value);
     }
 
-    // Helper function to convert bytes32 to string
     function bytes32ToString(bytes32 value) internal pure returns (string memory) {
         bytes memory alphabet = "0123456789abcdef";
         bytes memory str = new bytes(64);

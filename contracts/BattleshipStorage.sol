@@ -5,13 +5,10 @@ pragma abicoder v2;
 import "./libraries/IntBattleshipStruct.sol";
 
 contract BattleshipStorage {
-    
-    // in the next development, should be a non-fixed variable that
-    // the host player chose at the moment of creation of the game
     uint8 private gridDimensionN = 4;
     uint8 constant numShips = 2;
     uint256 private gameId;
-    uint256 constant maxTime = 4 seconds; // 3 minutes;
+    uint256 constant maxTime = 4 seconds; 
     uint256 private immutable maxNumberOfMissiles;
     uint256 constant minStakingAmount = uint(0.0001 ether);
     address private currentPlayer;
@@ -52,12 +49,6 @@ contract BattleshipStorage {
         initializeShipPositionMapping();
         gridSquare = gridDimensionN * gridDimensionN;
     }
-
-    // Helper function to convert address to string
-    function addressToString(address addr) internal pure returns (string memory) {
-        bytes32 value = bytes32(uint256(uint160(addr)));
-        return bytes32ToString(value);
-    }
     
     function initializeShipPositionMapping() private {
         uint8 shipSizes;
@@ -66,41 +57,6 @@ contract BattleshipStorage {
             sumOfShipSizes += shipSizes;
         }
     }
-
-    // generate a random ship direction
-    /*function generateRandomDirection() private view returns (IntBattleshipStruct.ShipDirection) {
-        uint8 randomValue = uint8(uint256(keccak256(abi.encodePacked(block.timestamp, block.difficulty))) % 2);
-        if (randomValue == 0) {
-            return IntBattleshipStruct.ShipDirection.Vertical;
-        } else {
-            return IntBattleshipStruct.ShipDirection.Horizontal;
-        }
-    }
-
-    function generateRandomAxis(uint8 shipLength, IntBattleshipStruct.ShipDirection direction) 
-    private view returns (uint8 axisX, uint8 axisY) {
-        uint8 gridSize = gridDimensionN; // Change this to your grid size
-        require(gridSize > 0, "Grid size must be greater than 0");
-
-        // Generate random X and Y coordinates within the grid size
-        axisX = uint8(uint256(keccak256(abi.encodePacked(block.timestamp, block.difficulty, msg.sender, shipLength, direction))) % gridSize);
-        axisY = uint8(uint256(keccak256(abi.encodePacked(block.timestamp, block.difficulty, msg.sender, shipLength, direction, axisX))) % gridSize);
-
-        // Adjust X and Y coordinates based on ship length and direction to ensure the entire ship fits within the grid
-        if (direction == IntBattleshipStruct.ShipDirection.Horizontal) {
-            // Check if the ship goes out of bounds on the X-axis
-            while (axisX + shipLength > gridSize) {
-                axisX = uint8(uint256(keccak256(abi.encodePacked(block.timestamp, block.difficulty, msg.sender, shipLength, direction, axisX))) % gridSize);
-            }
-        } else if (direction == IntBattleshipStruct.ShipDirection.Vertical) {
-            // Check if the ship goes out of bounds on the Y-axis
-            while (axisY + shipLength > gridSize) {
-                axisY = uint8(uint256(keccak256(abi.encodePacked(block.timestamp, block.difficulty, msg.sender, shipLength, direction, axisY))) % gridSize);
-            }
-        }
-
-        return (axisX, axisY);
-    }*/
 
     // Function to create Merkle tree leaf
     function createMerkleTreeLeaf(uint256 _state, address _player) 
@@ -130,17 +86,6 @@ contract BattleshipStorage {
         
         // Return the last node in the array, which should be the root
         return nodes[nodes.length - 1];
-    }
-
-    function log2(uint256 x) internal pure returns (uint256) {
-        require(x > 0, "Input must be greater than zero");
-
-        uint256 result = 0;
-        while (x > 1) {
-            x >>= 1;
-            result += 1;
-        }
-        return result;
     }
 
     function calculateMerkleRoot(bytes32[][] memory _leaves, address _player)
@@ -185,7 +130,6 @@ contract BattleshipStorage {
         return calculateMerkleRootInternal(parents, _player);
     } 
 
-    /* this function is build for the specific case of 4 x 4 matrix */
     // calculate the Merkle proof from the specified _player, axisY, and axisX to the root
     function generateProof(address _player, uint8 axisY, uint8 axisX, uint8 dim) 
     external view returns (bytes32[] memory) {
@@ -526,11 +470,6 @@ contract BattleshipStorage {
         return numShips;
     }
 
-    function getShipPosition(address _address, uint8 _index) 
-    external view returns (IntBattleshipStruct.ShipPosition memory) {
-        return players[_address].shipPositions[_index];
-    }
-
     function getShipPositionByAxis(address _player, uint8 _axisX, uint8 _axisY) 
     public view returns (IntBattleshipStruct.ShipPosition memory) {
         IntBattleshipStruct.PlayerModel storage player = players[_player];
@@ -579,25 +518,6 @@ contract BattleshipStorage {
 
     function getMerkleTreeLeaves(address _address) external view returns (bytes32[][] memory) {
         return players[_address].leaves;
-    }
-
-     function uintToString(uint256 value) internal pure returns (string memory) {
-        if (value == 0) {
-            return "0";
-        }
-        uint256 temp = value;
-        uint256 digits;
-        while (temp != 0) {
-            digits++;
-            temp /= 10;
-        }
-        bytes memory buffer = new bytes(digits);
-        while (value != 0) {
-            digits -= 1;
-            buffer[digits] = bytes1(uint8(48 + uint8(value % 10)));
-            value /= 10;
-        }
-        return string(buffer);
     }
 
     function setShipPositions(uint8[] memory shipLengths, uint8[] memory axisXs,
@@ -687,13 +607,6 @@ contract BattleshipStorage {
         players[_player].leafIndexShipPosition.push(_leafIndexShipPosition);
     }
 
-    function uint8ToString(uint8 _num) internal pure returns (string memory) {
-        bytes memory numBytes = new bytes(1);
-        numBytes[0] = bytes1(uint8(_num));
-
-        return string(abi.encodePacked(numBytes));
-    }
-
     function getSumOfShipSize() external view returns (uint8) {
         return sumOfShipSizes;
     }
@@ -721,7 +634,7 @@ contract BattleshipStorage {
         }
     }
 
-     function getShipLenghtFromIndex(uint8 _index) external pure returns (uint8){
+    function getShipLenghtFromIndex(uint8 _index) external pure returns (uint8){
         if (_index >= 0 && _index < numShips) {
             return _index + 1;
         } else {
@@ -773,17 +686,6 @@ contract BattleshipStorage {
     }
 
     // Merkle Tree related functions
-
-    // Utility function to convert bytes32 to string
-    function bytes32ToString(bytes32 data) internal pure returns (string memory) {
-        bytes memory bytesString = new bytes(64);
-        for (uint256 i = 0; i < 32; i++) {
-            bytes1 char = bytes1(bytes32(uint256(data) * 2**(8 * i)));
-            bytesString[i * 2] = char;
-            bytesString[i * 2 + 1] = bytes1(0);
-        }
-        return string(bytesString);
-    }
 
     function getMerkleTreeRootByBattleIdAndPlayer(uint256 _battleId, address _player) 
     public view returns (bytes32) {
@@ -876,6 +778,59 @@ contract BattleshipStorage {
     function setTurnByBattleId(uint256 _battleId, address _turn) external returns (bool){
         turn[_battleId]  = _turn;
         return true;
+    }
+
+    // Additional functions
+    function addressToString(address addr) internal pure returns (string memory) {
+        bytes32 value = bytes32(uint256(uint160(addr)));
+        return bytes32ToString(value);
+    }
+
+    function log2(uint256 x) internal pure returns (uint256) {
+        require(x > 0, "Input must be greater than zero");
+
+        uint256 result = 0;
+        while (x > 1) {
+            x >>= 1;
+            result += 1;
+        }
+        return result;
+    }
+
+    function uintToString(uint256 value) internal pure returns (string memory) {
+        if (value == 0) {
+            return "0";
+        }
+        uint256 temp = value;
+        uint256 digits;
+        while (temp != 0) {
+            digits++;
+            temp /= 10;
+        }
+        bytes memory buffer = new bytes(digits);
+        while (value != 0) {
+            digits -= 1;
+            buffer[digits] = bytes1(uint8(48 + uint8(value % 10)));
+            value /= 10;
+        }
+        return string(buffer);
+    }
+
+    function uint8ToString(uint8 _num) internal pure returns (string memory) {
+        bytes memory numBytes = new bytes(1);
+        numBytes[0] = bytes1(uint8(_num));
+
+        return string(abi.encodePacked(numBytes));
+    }
+
+    function bytes32ToString(bytes32 data) internal pure returns (string memory) {
+        bytes memory bytesString = new bytes(64);
+        for (uint256 i = 0; i < 32; i++) {
+            bytes1 char = bytes1(bytes32(uint256(data) * 2**(8 * i)));
+            bytesString[i * 2] = char;
+            bytesString[i * 2 + 1] = bytes1(0);
+        }
+        return string(bytesString);
     }
     
 }

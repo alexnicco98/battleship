@@ -73,10 +73,6 @@ interface IntBattleshipStorage {
 
     function getShipLenghtFromIndex(uint8 _index) external view returns (uint8);
 
-    // get a single ship position inside the struct PlayerModel
-    function getShipPosition(uint8 _positionKey) 
-        external view returns (IntBattleshipStruct.ShipPosition memory);
-
     // get a single ship position knowing the axis
     function getShipPositionByAxis(address _player,  uint8 _axisX, uint8 _axisY) 
         external view returns (IntBattleshipStruct.ShipPosition memory);

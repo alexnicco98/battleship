@@ -30,16 +30,16 @@ library IntBattleshipStruct {
         GamePhase gamePhase; // The game phase
         uint256 maxTimeForPlayerDelay; // If a player does not play after this time elapses,
                                        // then the contract will freeze the stake value of the player
-                                       // and the other will obtain the ammount
+                                       // and the other will obtain the amount
         uint256 createdAt; // Time Created
     }
 
     struct PlayerModel {
         ShipPosition[] shipPositions; // Array of ship positions
-        uint8[] leafIndexX; // for each shipPosition I save the leaf index X
-        uint8[] leafIndexY; // for each shipPosition I save the leaf index Y
+        uint8[] leafIndexX; // For each shipPosition I save the leaf index X
+        uint8[] leafIndexY; // For each shipPosition I save the leaf index Y
         uint8[] leafIndexShipPosition; // correspond to the shipPosition relative
-                                         // to the leafIndexX[i] and leafIndexY[i]
+                                        // to the leafIndexX[i] and leafIndexY[i]
         bytes32[][] leaves;  // Array of Merkle tree leaves
     }
 

@@ -229,7 +229,7 @@ contract("Battleship", accounts => {
         }
 
         let attackingPosition = positionsAttackedByPlayerTwo[0]; 
-        let proofleaf = await battleshipStorageInstance.generateProof(
+        let proofLeaf = await battleshipStorageInstance.generateProof(
             playerOne, attackingPosition.axisY, attackingPosition.axisX, 
             gameSize);
         // Get the current state of the battle
@@ -242,7 +242,7 @@ contract("Battleship", accounts => {
 
         // playerTwo perform the 1° attack
         let attackResult = await battleshipInstance.attack(
-            battleId, proofleaf, attackingPosition.axisX, attackingPosition.axisY,
+            battleId, proofLeaf, attackingPosition.axisX, attackingPosition.axisY,
             { from: playerTwo });
     
         // Get the updated state of the battle
@@ -270,7 +270,7 @@ contract("Battleship", accounts => {
         // ------------------------------------------------------------------
         // playerOne perform the 1° attack
         attackingPosition = positionsAttackedByPlayerOne[0];
-        proofleaf = await battleshipStorageInstance.generateProof(
+        proofLeaf = await battleshipStorageInstance.generateProof(
             playerTwo, attackingPosition.axisY, attackingPosition.axisX,
             gameSize);
         
@@ -286,7 +286,7 @@ contract("Battleship", accounts => {
 
         // Perform the attack
         attackResult = await battleshipInstance.attack(
-            battleId, proofleaf, attackingPosition.axisX, attackingPosition.axisY, 
+            battleId, proofLeaf, attackingPosition.axisX, attackingPosition.axisY, 
             { from: playerOne });
 
         // Check if the attack was successful
@@ -322,7 +322,7 @@ contract("Battleship", accounts => {
         // ------------------------------------------------------------------
         // playerTwo perform the 2° attack
         attackingPosition = positionsAttackedByPlayerTwo[1];
-        proofleaf = await battleshipStorageInstance.generateProof(
+        proofLeaf = await battleshipStorageInstance.generateProof(
             playerOne, attackingPosition.axisY, attackingPosition.axisX, 
             gameSize);
         
@@ -332,7 +332,7 @@ contract("Battleship", accounts => {
         console.log("-----------------------------------------------");
 
         attackResult = await battleshipInstance.attack(
-            battleId, proofleaf, attackingPosition.axisX, attackingPosition.axisY,
+            battleId, proofLeaf, attackingPosition.axisX, attackingPosition.axisY,
             { from: playerTwo });
 
         // Watch for the ConfirmShotStatus event
@@ -357,7 +357,7 @@ contract("Battleship", accounts => {
         // ------------------------------------------------------------------
         // playerOne perform the 2° attack
         attackingPosition = positionsAttackedByPlayerOne[1];
-        proofleaf = await battleshipStorageInstance.generateProof(
+        proofLeaf = await battleshipStorageInstance.generateProof(
             playerTwo, attackingPosition.axisY, attackingPosition.axisX, 
             gameSize);
         
@@ -367,7 +367,7 @@ contract("Battleship", accounts => {
         console.log("-----------------------------------------------");
 
         attackResult = await battleshipInstance.attack(
-            battleId, proofleaf, attackingPosition.axisX, attackingPosition.axisY, 
+            battleId, proofLeaf, attackingPosition.axisX, attackingPosition.axisY, 
             { from: playerOne });
 
         // Watch for the ConfirmShotStatus event
@@ -392,7 +392,7 @@ contract("Battleship", accounts => {
         // ------------------------------------------------------------------
         // playerTwo perform the 3° attack
         attackingPosition = positionsAttackedByPlayerTwo[2];
-        proofleaf = await battleshipStorageInstance.generateProof(
+        proofLeaf = await battleshipStorageInstance.generateProof(
             playerOne, attackingPosition.axisY, attackingPosition.axisX,
             gameSize);
 
@@ -402,7 +402,7 @@ contract("Battleship", accounts => {
         console.log("-----------------------------------------------");
         
         attackResult = await battleshipInstance.attack(
-            battleId, proofleaf, attackingPosition.axisX, attackingPosition.axisY, 
+            battleId, proofLeaf, attackingPosition.axisX, attackingPosition.axisY, 
             { from: playerTwo });
 
         // Watch for the ConfirmShotStatus event
@@ -427,7 +427,7 @@ contract("Battleship", accounts => {
         // ------------------------------------------------------------------
         // playerOne perform the 3° attack
         attackingPosition = positionsAttackedByPlayerOne[2];
-        proofleaf = await battleshipStorageInstance.generateProof(
+        proofLeaf = await battleshipStorageInstance.generateProof(
             playerTwo, attackingPosition.axisY, attackingPosition.axisX,
             gameSize);
 
@@ -437,7 +437,7 @@ contract("Battleship", accounts => {
         console.log("-----------------------------------------------");
         
         attackResult = await battleshipInstance.attack(
-            battleId, proofleaf, attackingPosition.axisX, attackingPosition.axisY,
+            battleId, proofLeaf, attackingPosition.axisX, attackingPosition.axisY,
             { from: playerOne });
         
         // Watch for the ConfirmShotStatus event
@@ -462,7 +462,7 @@ contract("Battleship", accounts => {
         // ------------------------------------------------------------------
         // playerTwo perform the 4° attack
         attackingPosition = positionsAttackedByPlayerTwo[3];
-        proofleaf = await battleshipStorageInstance.generateProof(
+        proofLeaf = await battleshipStorageInstance.generateProof(
             playerOne, attackingPosition.axisY, attackingPosition.axisX,
             gameSize);
 
@@ -472,7 +472,7 @@ contract("Battleship", accounts => {
         console.log("-----------------------------------------------");
 
         attackResult = await battleshipInstance.attack(
-            battleId, proofleaf, attackingPosition.axisX, attackingPosition.axisY, 
+            battleId, proofLeaf, attackingPosition.axisX, attackingPosition.axisY, 
             { from: playerTwo });
 
         // Watch for the ConfirmShotStatus event
