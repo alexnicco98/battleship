@@ -1,70 +1,20 @@
-# Getting Started with Create React App
+# P2P System and Blockchain Project Report
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+This project report is for a Master's Degree Course in Cybersecurity at the University of Pisa. The project focuses on re-imagining the Battleship game on the Ethereum blockchain, where a wide range of options are made possible. The report covers the implementation choices, guide demo, evaluation of the gas cost, vulnerabilities analysis, and conclusion.
 
-## Available Scripts
+## Introduction
+This project focuses on a Battleship game, a traditional game in which two players position a fixed number of ships and after that phase try to find the other player’s ships. Ship placement and tactical engagement are the two separate phases of the game, which are defined by a secret battlefield and hidden information. The Ethereum blockchain is where this project seeks to re-imagine the Battleship experience. The Battleship experience is transferred to the Ethereum blockchain, where a wide range of options are made possible.
 
-In the project directory, you can run:
+## Implementation Choices
+The project uses two main contracts, the Battleship.sol and the Battleship-Storage contract, which store the main variables and information that the Battleship contract uses to achieve and play the game in a correct way. The game logic is inside the Battleship-Storage contract, and it incorporates a reward system for winners, allowing for the secure and timely distribution of tokens or cryptocurrency from the smart contract's balance.
 
-### `npm start`
+## Guide Demo
+The report also explains how to test the game using Truffle with Ganache. The game representation uses a text-based representation of the board. The players continue those attacks up to the moment in which all the ships are sunk. Every time that the attack function is called a different player must have called it.
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+## Evaluation of the Gas Cost
+Analyzing the results of the deploy battleship.js migration script will allow us to determine how much gas is used by the smart contract’s functions. The cost of deploying the two contracts in EUR is 26.21 EUR. The gas cost of the attack() method might vary based on the size of the game board and the complexity of the attack.
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## Vulnerabilities Analysis and Conclusion
+The Slither analysis program has discovered a number of potential vulnerabilities, including state variables not in use, unused features, missing statements requiring, and incorrect application of modifiers. It is suggested to analyze the input data to make sure that the ship locations are appropriate in order to close this issue. To achieve this, confirm that the ship positions do not overlap and that they are contained inside the boundaries of the game board.
 
-### `npm test`
-
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
-
-### `npm run build`
-
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
-
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
-
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
-
-### `npm run eject`
-
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
-
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+Overall, this project has successfully shifted the traditional game of Battleship to the Ethereum blockchain by using its unique features like transparency, tamper resistance, and the ability to incorporate a reward system for winners.
