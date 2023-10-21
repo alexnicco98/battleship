@@ -5,7 +5,6 @@ pragma experimental ABIEncoderV2;
 library IntBattleshipStruct {
 
     enum GamePhase {None, Placement, Shooting, Gameover} // phase of the game
-    enum ShipState {None, Intact, Damaged, Sunk } // condition of the ship
     enum ShipDirection {None, Vertical, Horizontal} // ship direction
 
     struct ShipPosition {
@@ -13,7 +12,6 @@ library IntBattleshipStruct {
         uint8 axisX;
         uint8 axisY;
         ShipDirection direction;
-        ShipState state;
     }
     
 

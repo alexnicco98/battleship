@@ -488,8 +488,7 @@ contract BattleshipStorage {
                 shipLength: 0,
                 direction: IntBattleshipStruct.ShipDirection.None,
                 axisX: _axisX,
-                axisY: _axisY,
-                state: IntBattleshipStruct.ShipState.None
+                axisY: _axisY
             });
         return defaultShipPosition;
     }
@@ -531,8 +530,7 @@ contract BattleshipStorage {
                 shipLength: shipLengths[i],
                 axisX: axisXs[i],
                 axisY: axisYs[i],
-                direction: directions[i],
-                state: IntBattleshipStruct.ShipState.Intact
+                direction: directions[i]
             });
             players[player].shipPositions.push(newShip);
             // anti-cheat check

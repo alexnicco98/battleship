@@ -261,7 +261,7 @@ contract Battleship {
     function checkForWinner(uint _battleId, address _playerAddress, address _opponentAddress, 
     IntBattleshipStruct.ShipPosition memory _shipPosition) private returns (bool){
         // Add to the last position hit
-        if(_shipPosition.state != IntBattleshipStruct.ShipState.None){ 
+        if(_shipPosition.direction != IntBattleshipStruct.ShipDirection.None){ 
             dataStorage.setCorrectPositionsHitByBattleIdAndPlayer(_battleId, 
             _playerAddress, _shipPosition);
         }
