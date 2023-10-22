@@ -5,8 +5,8 @@ pragma abicoder v2;
 import "./libraries/IntBattleshipStruct.sol";
 
 contract BattleshipStorage {
-    uint8 private gridDimensionN = 4;
-    uint8 constant numShips = 2;
+    uint8 constant gridDimensionN = 4;
+    uint8 constant numShips = gridDimensionN / 2;
     uint256 private gameId;
     uint256 constant maxTime = 4 seconds; 
     uint256 private immutable maxNumberOfMissiles;
@@ -609,12 +609,8 @@ contract BattleshipStorage {
         return sumOfShipSizes;
     }
 
-    function getGridDimensionN() external view returns (uint8) {
+    function getGridDimensionN() external pure returns (uint8) {
         return gridDimensionN;
-    }
-
-    function setGridDimensionN(uint8 newValue) external{
-        gridDimensionN = newValue;
     }
 
     function msgSender() external view returns(address _sender) {

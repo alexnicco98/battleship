@@ -67,7 +67,6 @@ interface IntBattleshipStorage {
     function getNumShips() external view returns (uint8);
     function getSumOfShipSize() external view returns (uint8);
     function getGridDimensionN() external view returns (uint8);
-    function setGridDimensionN(uint8 _newValue) external;
 
     function msgSender() external view returns(address _sender);
 

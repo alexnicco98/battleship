@@ -144,40 +144,41 @@ contract("Battleship", accounts => {
     });
 
     it("Should perform an attack and check for winner", async () => {
+        const gameSize = 4;
         const gameBoardOne = [];
         const gameBoardTwo = [];
-        for (let i = 0; i < 4; i++) {
-            gameBoardOne.push(new Array(4).fill("O")); // "O" represents an empty cell
-            gameBoardTwo.push(new Array(4).fill("O")); 
+        // Initialize game boards with empty cells (water)
+        for (let i = 0; i < gameSize; i++) {
+            gameBoardOne.push(Array(gameSize).fill("🌊")); // "🌊" represents water
+            gameBoardTwo.push(Array(gameSize).fill("🌊"));
         }
 
         // Function to update the game board with ship and hit information
         function updateGameBoard(player, x, y, isHit, board) {
-            if(board == 1){
-                if (isHit) {
-                    gameBoardOne[y][x] = "X"; // "X" represents a hit
-                } else {
-                    gameBoardOne[y][x] = "S"; // "S" represents a ship
-                }
-            }else{
-                if (isHit) {
-                    gameBoardTwo[y][x] = "X"; // "X" represents a hit
-                } else {
-                    gameBoardTwo[y][x] = "S"; // "S" represents a ship
-                } 
+            const hitEmoji = "💥"; // Emoji for a hit
+            const missEmoji = "💦"; // Emoji for a miss (splash)
+        
+            const emoji = isHit ? hitEmoji : missEmoji;
+        
+            if (board == 1) {
+                gameBoardOne[y][x] = emoji;
+            } else {
+                gameBoardTwo[y][x] = emoji;
             }
         }
 
         // Function to print the game board
         function printGameBoard(boardNum) {
             let board;
-            if(boardNum == 1){
+            if (boardNum == 1) {
                 board = gameBoardOne;
-            }else {
+            } else {
                 board = gameBoardTwo;
             }
+        
             for (let row of board) {
-                console.log("     " + row.join(" "));
+                const spaces = "                 ";
+                console.log(spaces + row.join(" "));
             }
         }
 
@@ -235,9 +236,6 @@ contract("Battleship", accounts => {
     
         // Get the updated state of the battle
         let updatedBattleState = await battleshipStorageInstance.getBattle(battleId);
-        /*len = await battleshipStorageInstance.getPositionsAttackedLength(battleId, 
-            playerTwo);
-        console.log("len after: ", len.toString());*/
 
         // Watch for the ConfirmShotStatus event
         let confirmShotStatusEvent = attackResult.logs.find(
